@@ -11,7 +11,7 @@ int main (int argc, char *argv[])
             child();
             break;
         case -1:
-            debug ("looks like fork has failed\n");
+            sdebug ("looks like fork has failed\n");
             exit(EXIT_FAILURE);
             break;
         default:

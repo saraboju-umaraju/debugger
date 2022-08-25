@@ -8,14 +8,17 @@ TARGET_ARCH =
 TRACEE := tracee.c
 
 SOURCES += do_debug.c
-SOURCES += parent.c
-SOURCES += child.c
-SOURCES += list.c
-SOURCES += docmd.c
+SOURCES += do_parent.c
+SOURCES += do_child.c
+SOURCES += do_command.c
+SOURCES += do_continue.c
+SOURCES += do_break.c
+SOURCES += do_info.c
 OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 
 cdb : $(OBJECTS) tracee
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
+	./cdb
 clean :
 	@$(RM) $(OBJECTS) cdb tracee tracee.o
 
