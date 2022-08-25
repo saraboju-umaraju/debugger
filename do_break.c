@@ -2,6 +2,7 @@
 
 struct bplist *bps = NULL;
 
+
 static uint64_t bp_from_index(uint64_t index)
 {
     struct bplist *iter = bps;
@@ -11,6 +12,31 @@ static uint64_t bp_from_index(uint64_t index)
         iter = iter->next;
     }
     return -1;
+}
+
+static struct bplist *bp_from_address(uint64_t address)
+{
+    struct bplist *iter = bps;
+    for(;iter;) {
+        if (iter->address == address)
+            return iter;
+        iter = iter->next;
+    }
+    return NULL;
+}
+
+static int save_old_content(uint64_t address, uint64_t content)
+{
+    struct bplist *tmp = bp_from_address(address);
+    if (tmp->saved_data == 0)
+        tmp->saved_data = content;
+    return 0;
+}
+
+static uint64_t get_saved_content(uint64_t address)
+{
+    struct bplist *tmp = bp_from_address(address);
+    return tmp->saved_data ;
 }
 
 int info_break(void)
@@ -51,9 +77,7 @@ static int disable_break(unsigned long addr, struct argdata* arg)
     long data = ptrace(PTRACE_PEEKDATA, arg->cpid, addr, NULL);
     exit_on_error(-1 == data);
     debug("peeked data at %lx is %lx\n", addr, data);
-    //uint64_t saved_data = data;
-    data = data & ~(0xff);
-    data = data | (0xe8); //0xcc is int 3 on x86
+    data = get_saved_content(addr);
     debug("poking data at %lx is %lx\n", addr, data);
     int status = ptrace(PTRACE_POKEDATA, arg->cpid, addr, data);
     exit_on_error(-1 == status);
@@ -65,7 +89,7 @@ static int enable_break(unsigned long addr, struct argdata* arg)
     long data = ptrace(PTRACE_PEEKDATA, arg->cpid, addr, NULL);
     exit_on_error(-1 == data);
     debug("peeked data at %lx is %lx\n", addr, data);
-    //uint64_t saved_data = data;
+    save_old_content(addr, data);
     data = data & ~(0xff);
     data = data | (0xcc); //0xcc is int 3 on x86
     debug("poking data at %lx is %lx\n", addr, data);

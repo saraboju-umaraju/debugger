@@ -22,6 +22,7 @@
 
 struct bplist {
     uint64_t address;
+    uint64_t saved_data;
     int index;
     struct bplist *next;
 };
