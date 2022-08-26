@@ -11,7 +11,7 @@ static uint64_t bp_from_index(uint64_t index)
             return iter->address;
         iter = iter->next;
     }
-    return -1;
+    return 0;
 }
 
 static struct bplist *bp_from_address(uint64_t address)

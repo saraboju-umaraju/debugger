@@ -28,6 +28,7 @@ static struct argdata* usercommand()
                 continue;
             }
             arg = (struct argdata*) malloc(sizeof(struct argdata));
+            sdebug ("after allocation = %p\n", arg);
             memset(arg, 0, sizeof(struct argdata));
             exit_on_error(NULL == arg);
             process_command(line, LINE_SIZE, arg);
@@ -63,6 +64,7 @@ void parent(void)
     struct argdata *arg = NULL;
     while ((arg = usercommand())) {
         do_run_cmd(arg);
+        sdebug ("before freeing = %p\n", arg);
         free(arg);
         arg = NULL;
     }

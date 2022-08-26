@@ -110,6 +110,11 @@ int process_command(char *line, size_t maxsize, struct argdata *arg)
             if (token) {
                 sdebug ("got %s \n",token );
                 strncpy(arg->v2, token, CMD_LEN);
+                token = gettok (NULL , delim) ;
+                if (token) {
+                    sdebug ("got %s \n",token );
+                    strncpy(arg->v3, token, CMD_LEN);
+                }
             }
         }
     }

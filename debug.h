@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
+#include <sys/user.h>
 #define debug(...) printf (__VA_ARGS__)
 #define sdebug(...)
 #define exit_on_error(cond) \
@@ -40,6 +41,7 @@ struct argdata {
     char v0[CMD_LEN];
     char v1[CMD_LEN];
     char v2[CMD_LEN];
+    char v3[CMD_LEN];
 };
 
 int handle_enable(void *data);
@@ -50,6 +52,7 @@ void child(void);
 int handle_continue(void *data);
 int handle_break(void *data);
 int handle_info(void *data);
+int handle_register(void *data);
 int info_break(void);
 int handle_enable(void *data);
 int cmd_match(struct cmdlist *iter, char *line);

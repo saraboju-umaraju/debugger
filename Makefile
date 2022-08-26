@@ -15,9 +15,10 @@ SOURCES += do_continue.c
 SOURCES += do_break.c
 SOURCES += do_info.c
 SOURCES += do_misc.c
+SOURCES += do_register.c
 OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 
-cdb : $(OBJECTS) tracee
+cdb : $(OBJECTS) tracee 
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
 	./cdb
 clean :
