@@ -24,6 +24,7 @@ struct bplist {
     uint64_t address;
     uint64_t saved_data;
     int index;
+    int status;
     struct bplist *next;
 };
 
@@ -42,6 +43,7 @@ struct argdata {
 };
 
 int handle_enable(void *data);
+int process_command(char *line, size_t maxsize, struct argdata *arg);
 int handle_disable(void *data);
 void parent(void);
 void child(void);
@@ -51,6 +53,7 @@ int handle_info(void *data);
 int info_break(void);
 int handle_enable(void *data);
 int cmd_match(struct cmdlist *iter, char *line);
+struct cmdlist *match_cmd(void *data, char *cmd_string);
 int process_command(char *line, size_t maxsize, struct argdata*);
 int initcmdlist(void);
 int wait_for_child(void);

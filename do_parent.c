@@ -5,14 +5,12 @@ extern pid_t proc ;
 
 static int do_run_cmd(struct argdata *arg)
 {
-    sdebug ("handling = ' %s '\n", arg->v0);
-
-    struct cmdlist *iter = commands;
-    for(;iter;) {
-        if (cmd_match(iter, arg->v0)) {
-            return iter->hf((void*)arg);
-        }
-        iter = iter->next;
+    struct cmdlist *tmp = match_cmd(arg, arg->v0);
+    if (NULL == tmp) {
+        debug ("command not found = %8s\n", arg->v0);
+        return 1;
+    } else {
+        return tmp->hf((void*)arg);
     }
     return 0;
 }
@@ -26,7 +24,11 @@ static struct argdata* usercommand()
     while (1) {
         printf("$_ ");
         if (NULL != fgets(line, LINE_SIZE, stdin)) {
+            if (line[0] == '\n') {
+                continue;
+            }
             arg = (struct argdata*) malloc(sizeof(struct argdata));
+            memset(arg, 0, sizeof(struct argdata));
             exit_on_error(NULL == arg);
             process_command(line, LINE_SIZE, arg);
         } else {

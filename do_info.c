@@ -5,24 +5,24 @@ extern struct cmdlist *commands ;
 int handle_info(void *data)
 {
     struct argdata *arg = (struct argdata*)data;
-    sdebug ("%s %s %s \n", arg->v0, arg->v1, arg->v2);
 
     if (!arg->v1[0]) {
-        debug ("info would need an argument\n");
+        debug ("info needs arg\n");
         return 1;
     }
 
-    struct cmdlist *iter = commands;
-    for(;iter;) {
-        if (cmd_match(iter, arg->v1)) {
-            if (iter->help) {
-                iter->help();
-                return 0;
-            }
-        }
-        iter = iter->next;
+    struct cmdlist *tmp = match_cmd(data, arg->v1);
+
+    if (NULL == tmp) {
+        debug("no help available for %10s\n", arg->v1);
+        return 1;
     }
-    debug("no help available for %10s\n", arg->v1);
-    return 1;
+
+    if (NULL == tmp->help) {
+        debug("no help available for %10s\n", arg->v0);
+        return 1;
+    }
+        return tmp->help();
+
 }
 

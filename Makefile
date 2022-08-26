@@ -1,7 +1,7 @@
 CC := gcc
 RM := /bin/rm -rf
 ECHO := echo
-CFLAGS += -ggdb3
+CFLAGS += -ggdb3 -rdynamic
 CFLAGS += -Wall
 CFLAGS += -Werror
 TARGET_ARCH = 
@@ -14,6 +14,7 @@ SOURCES += do_command.c
 SOURCES += do_continue.c
 SOURCES += do_break.c
 SOURCES += do_info.c
+SOURCES += do_misc.c
 OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 
 cdb : $(OBJECTS) tracee
