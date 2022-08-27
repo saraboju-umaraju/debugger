@@ -5,9 +5,9 @@ extern pid_t proc ;
 
 static int do_run_cmd(struct argdata *arg)
 {
-    struct cmdlist *tmp = match_cmd(arg, arg->v0);
+    struct cmdlist *tmp = match_cmd(arg, arg->v[0]);
     if (NULL == tmp) {
-        debug ("command not found = %8s\n", arg->v0);
+        debug ("command not found = %8s\n", arg->v[0]);
         return 1;
     } else {
         return tmp->hf((void*)arg);

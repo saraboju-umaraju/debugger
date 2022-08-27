@@ -21,6 +21,11 @@
 #define CMD_LEN 16
 #define LINE_SIZE 80
 
+struct argdata {
+    pid_t cpid;
+    char **v;
+};
+
 struct bplist {
     uint64_t address;
     uint64_t saved_data;
@@ -31,30 +36,22 @@ struct bplist {
 
 struct cmdlist {
     char command[CMD_LEN];
-    int (*hf)(void *);
+    int (*hf)(struct argdata *);
     int (*help)(void);
     struct cmdlist *next;
 };
 
-struct argdata {
-    pid_t cpid;
-    char v0[CMD_LEN];
-    char v1[CMD_LEN];
-    char v2[CMD_LEN];
-    char v3[CMD_LEN];
-};
-
-int handle_enable(void *data);
+int handle_enable(struct argdata *data);
 int process_command(char *line, size_t maxsize, struct argdata *arg);
-int handle_disable(void *data);
+int handle_disable(struct argdata *data);
 void parent(void);
 void child(void);
-int handle_continue(void *data);
-int handle_break(void *data);
-int handle_info(void *data);
-int handle_register(void *data);
+int handle_continue(struct argdata *data);
+int handle_break(struct argdata *data);
+int handle_info(struct argdata *data);
+int handle_register(struct argdata *data);
+int handle_enable(struct argdata *data);
 int info_break(void);
-int handle_enable(void *data);
 int cmd_match(struct cmdlist *iter, char *line);
 struct cmdlist *match_cmd(void *data, char *cmd_string);
 int process_command(char *line, size_t maxsize, struct argdata*);

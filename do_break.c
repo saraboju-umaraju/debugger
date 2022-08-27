@@ -100,22 +100,21 @@ static int enable_break(unsigned long addr, struct argdata* arg)
     tmp->status = 1;
     return 0;
 }
-static uint64_t get_enable_disable_data(void *data)
+static uint64_t get_enable_disable_data(struct argdata *arg)
 {
-    struct argdata *arg = (struct argdata*)data;
-    debug ("%s %s %s \n", arg->v0, arg->v1, arg->v2);
-    if (!arg->v1[0]) {
+    sdebug ("%s %s %s \n", arg->v[0], arg->v[1], arg->v[2]);
+    if (!arg->v[1]) {
         debug ("missing arg\n");
         return 0;
     }
-    unsigned long int index = strtoul(arg->v1, NULL, 10);
+    unsigned long int index = strtoul(arg->v[1], NULL, 10);
     if (0 == index) {
         debug ("Invalid breakpoint\n");
         return 0;
     }
     return bp_from_index(index);
 }
-int handle_enable(void *data)
+int handle_enable(struct argdata *data)
 {
     uint64_t bpindex = 0;
     if (0 == (bpindex = get_enable_disable_data(data))) {
@@ -125,7 +124,7 @@ int handle_enable(void *data)
     return 0;
 }
 
-int handle_disable(void *data)
+int handle_disable(struct argdata *data)
 {
     uint64_t bpindex = 0;
     if (0 == (bpindex = get_enable_disable_data(data))) {
@@ -135,15 +134,15 @@ int handle_disable(void *data)
     return 0;
 }
 
-int handle_break(void *data)
+int handle_break(struct argdata *data)
 {
     struct argdata *arg = (struct argdata*)data;
-    sdebug ("%s %s %s \n", arg->v0, arg->v1, arg->v2);
-    if (!arg->v1[0]) {
+    sdebug ("%s %s %s \n", arg->v[0], arg->v[1], arg->v[2]);
+    if (!arg->v[1]) {
         debug ("break need an arg\n");
         return 1;
     }
-    unsigned long int address = strtoul(arg->v1, NULL, 16);
+    unsigned long int address = strtoul(arg->v[1], NULL, 16);
     exit_on_error(0 == address);
     debug ("tryna break at %lx\n", address);
     bps = bp_add(bps, address);

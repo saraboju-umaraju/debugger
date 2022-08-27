@@ -10,7 +10,7 @@ int cmd_match(struct cmdlist *iter, char *line)
     return ( 0 == strcmp(iter->command, line));
 }
 
-static struct cmdlist *add_node(const char *cmd, int (*handle_fun)(void *), int (*help_fun)(void))
+static struct cmdlist *add_node(const char *cmd, int (*handle_fun)(struct argdata *), int (*help_fun)(void))
 {
     struct cmdlist *tmp = (struct cmdlist*) malloc(sizeof(struct cmdlist));
     exit_on_error(tmp == NULL);
@@ -21,7 +21,7 @@ static struct cmdlist *add_node(const char *cmd, int (*handle_fun)(void *), int 
     return tmp;
 }
 
-struct cmdlist *cmd_add(struct cmdlist *head, const char *cmd, int (*handle_fun)(void *), int (*help_fun)(void))
+struct cmdlist *cmd_add(struct cmdlist *head, const char *cmd, int (*handle_fun)(struct argdata *), int (*help_fun)(void))
 {
     sdebug ("adding %10s to the command list\n", cmd);
     struct cmdlist *newnode = add_node(cmd, handle_fun, help_fun);

@@ -1,6 +1,6 @@
 #include "debug.h"
 
-#if 0
+#if defined(FREAK)
 struct user_regs_struct
 {
     unsigned long r15;
@@ -32,6 +32,7 @@ struct user_regs_struct
     unsigned long gs;
 };
 #endif
+
 enum registers {
     r15,
     r14,
@@ -99,7 +100,6 @@ struct register_struct x86_registers [] = {
  [gs] =           {gs      ,     "gs",          55}
  };
 
-#if 1
 static int get_register_struct(char *rstr, struct register_struct x86_registers[], size_t len)
 {
     int k = 0;
@@ -112,8 +112,7 @@ static int get_register_struct(char *rstr, struct register_struct x86_registers[
     }
     return -1;
 }
-#endif
-#if 1
+
 static void dump_registers(struct user_regs_struct *regs)
 {
     int k = 0;
@@ -123,7 +122,6 @@ static void dump_registers(struct user_regs_struct *regs)
         debug ("%8s = %3ld %d %lx\n", x86_registers[k].name, x86_registers[k].dwarf_number, x86_registers[k].er, local_regs[k]);
     }
 }
-#endif
 
 static int read_registers(struct argdata *data, struct user_regs_struct *regs)
 {
@@ -131,39 +129,38 @@ static int read_registers(struct argdata *data, struct user_regs_struct *regs)
     exit_on_error(-1 == status);
     return 0;
 }
-#if 1
+
 static int write_registers(struct argdata *data, struct user_regs_struct *regs)
 {
     int status = ptrace(PTRACE_SETREGS, data->cpid, NULL, regs);
     exit_on_error(-1 == status);
     return 0;
 }
-#endif
 
-int handle_register(void *data)
+int handle_register(struct argdata *data)
 {
     struct argdata *arg = (struct argdata*)data;
-    debug ("%s %s %s \n", arg->v0, arg->v1, arg->v2);
+    debug ("%s %s %s \n", arg->v[0], arg->v[1], arg->v[2]);
     struct user_regs_struct regs = {0};
     read_registers(arg, &regs);
     struct register_struct *tmp = NULL;
     int index = -1;
 
-    if (arg->v1[0] == 'r') {
-        index = get_register_struct(arg->v2, x86_registers, 27);
+    if (arg->v[1] == NULL) {
+        dump_registers(&regs);
+    } else if (arg->v[1][0] == 'r') {
+        index = get_register_struct(arg->v[2], x86_registers, 27);
         exit_on_error(-1 == index);
         tmp = &x86_registers[index];
         debug ("0x%lx \n", ((unsigned long*)&regs)[tmp->er]);
-    } else if(arg->v1[0] == 'w') {
-        index = get_register_struct(arg->v2, x86_registers, 27);
+    } else if(arg->v[1][0] == 'w') {
+        index = get_register_struct(arg->v[2], x86_registers, 27);
         exit_on_error(-1 == index);
         tmp = &x86_registers[index];
-        unsigned long int data = strtoul(arg->v3, NULL, 16);
+        unsigned long int data = strtoul(arg->v[3], NULL, 16);
         sdebug ("0x%lx \n", ((unsigned long*)&regs)[tmp->er]);
         ((unsigned long*)&regs)[tmp->er] = data;
         write_registers(arg, &regs);
-    } else {
-        dump_registers(&regs);
     }
     return 0;
 }

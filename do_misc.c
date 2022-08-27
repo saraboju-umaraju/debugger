@@ -94,30 +94,21 @@ int process_command(char *line, size_t maxsize, struct argdata *arg)
 {
     char *delim = " ";
     char *token = NULL;
+    int i = 0;
 
     remove_nl(line);
 
     token = gettok(line , delim) ;
-    // Who even gave me a job in Nvidia lol :D
-    if (token) {
+    // just the command name
+    while (token) {
         sdebug ("got %s \n",token );
-        strncpy(arg->v0, token, CMD_LEN);
+        arg->v = (char **) realloc (arg->v, sizeof(char *)*(i+1));
+        arg->v[i] = (char *) malloc (sizeof(char) * CMD_LEN);
+        strncpy(arg->v[i++], token, CMD_LEN);
+        sdebug ("got %s \n",arg->v[i-1]);
         token = gettok (NULL , delim) ;
-        if (token) {
-            sdebug ("got %s \n",token );
-            strncpy(arg->v1, token, CMD_LEN);
-            token = gettok (NULL , delim) ;
-            if (token) {
-                sdebug ("got %s \n",token );
-                strncpy(arg->v2, token, CMD_LEN);
-                token = gettok (NULL , delim) ;
-                if (token) {
-                    sdebug ("got %s \n",token );
-                    strncpy(arg->v3, token, CMD_LEN);
-                }
-            }
-        }
     }
+    // Who even gave me a job in Nvidia lol :D
     arg->cpid = proc;
     return 0;
 }

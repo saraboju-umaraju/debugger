@@ -2,24 +2,22 @@
 
 extern struct cmdlist *commands ;
 
-int handle_info(void *data)
+int handle_info(struct argdata *arg)
 {
-    struct argdata *arg = (struct argdata*)data;
-
-    if (!arg->v1[0]) {
+    if (NULL == arg->v[1]) {
         debug ("info needs arg\n");
         return 1;
     }
 
-    struct cmdlist *tmp = match_cmd(data, arg->v1);
+    struct cmdlist *tmp = match_cmd(NULL, arg->v[1]);
 
     if (NULL == tmp) {
-        debug("no help available for %10s\n", arg->v1);
+        debug("no help available for %10s\n", arg->v[1]);
         return 1;
     }
 
     if (NULL == tmp->help) {
-        debug("no help available for %10s\n", arg->v0);
+        debug("no help available for %10s\n", arg->v[0]);
         return 1;
     }
         return tmp->help();
