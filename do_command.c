@@ -41,5 +41,6 @@ int initcmdlist(void)
     commands = cmd_add(commands, "disable", &handle_disable, NULL);
     commands = cmd_add(commands, "info", &handle_info, NULL);
     commands = cmd_add(commands, "register", &handle_register, NULL);
+    commands = cmd_add(commands, "quit", &handle_quit, NULL);
     return 0;
 }

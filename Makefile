@@ -16,6 +16,7 @@ SOURCES += do_break.c
 SOURCES += do_info.c
 SOURCES += do_misc.c
 SOURCES += do_register.c
+SOURCES += do_quit.c
 OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 
 cdb : $(OBJECTS) tracee 

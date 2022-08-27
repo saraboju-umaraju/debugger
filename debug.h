@@ -51,6 +51,7 @@ int handle_break(struct argdata *data);
 int handle_info(struct argdata *data);
 int handle_register(struct argdata *data);
 int handle_enable(struct argdata *data);
+int handle_quit(struct argdata *data);
 int info_break(void);
 int cmd_match(struct cmdlist *iter, char *line);
 struct cmdlist *match_cmd(void *data, char *cmd_string);
