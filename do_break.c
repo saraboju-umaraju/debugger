@@ -104,7 +104,7 @@ static uint64_t get_enable_disable_data(struct argdata *arg)
 {
     sdebug ("%s %s %s \n", arg->v[0], arg->v[1], arg->v[2]);
     if (!arg->v[1]) {
-        debug ("missing arg\n");
+        debug ("What do I enable/disable?\n");
         return 0;
     }
     unsigned long int index = strtoul(arg->v[1], NULL, 10);
@@ -139,7 +139,7 @@ int handle_break(struct argdata *data)
     struct argdata *arg = (struct argdata*)data;
     sdebug ("%s %s %s \n", arg->v[0], arg->v[1], arg->v[2]);
     if (!arg->v[1]) {
-        debug ("break need an arg\n");
+        debug ("break Where ?\n");
         return 1;
     }
     unsigned long int address = strtoul(arg->v[1], NULL, 16);

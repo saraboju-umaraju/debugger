@@ -5,7 +5,7 @@ extern struct cmdlist *commands ;
 int handle_info(struct argdata *arg)
 {
     if (NULL == arg->v[1]) {
-        debug ("info needs arg\n");
+        debug ("info What?\n");
         return 1;
     }
 

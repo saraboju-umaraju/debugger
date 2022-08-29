@@ -156,7 +156,7 @@ uint64_t set_pc(struct argdata *arg, uint64_t pc)
 int handle_register(struct argdata *data)
 {
     struct argdata *arg = (struct argdata*)data;
-    debug ("%s %s %s \n", arg->v[0], arg->v[1], arg->v[2]);
+    sdebug ("%s %s %s \n", arg->v[0], arg->v[1], arg->v[2]);
     struct user_regs_struct regs = {0};
     read_registers(arg, &regs);
     struct register_struct *tmp = NULL;

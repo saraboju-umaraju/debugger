@@ -1,5 +1,6 @@
 CC := gcc
 RM := /bin/rm -rf
+PRINTF := printf
 ECHO := echo
 CFLAGS += -ggdb3 -rdynamic
 CFLAGS += -Wall
@@ -21,10 +22,16 @@ SOURCES += do_mem.c
 OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 
 cdb : $(OBJECTS) do_me 
-	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
+	@$(CC) $(CFLAGS) -o $@ $(OBJECTS)
+	@$(PRINTF) 'LINK %-10s\n' "$@"
 	./cdb
 clean :
 	@$(RM) $(OBJECTS) cdb do_me do_me.o
 
+%.o : %.c 
+	@$(CC) $(CFLAGS) -c -o $@ $^
+	@$(PRINTF) 'COMPILE %-10s\n' "$<"
+
 do_me : do_me.o
-	$(CC) $(CFLAGS) -o $@ $^
+	@$(CC) $(CFLAGS) -o $@ $^
+	@$(PRINTF) 'LINK %-10s\n' "$@"
