@@ -64,4 +64,5 @@ int wait_for_child(void);
 struct bplist *bp_from_address(uint64_t address);
 int disable_break(unsigned long addr, struct argdata* arg);
 int enable_break(unsigned long addr, struct argdata* arg);
+int handle_help(struct argdata *arg);
 #endif // __DEBUG_H__

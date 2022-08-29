@@ -3,6 +3,17 @@
 extern pid_t proc ;
 extern struct cmdlist *commands ;
 
+int handle_help(struct argdata *arg)
+{
+    struct cmdlist *looper = commands;
+    debug ("Available commands on cdb\n");
+    for(; looper; looper = looper->next) {
+        printf(" %10s\n", looper->command);
+    }
+    return 0;
+}
+
+
 struct cmdlist *match_cmd(void *data, char *cmd_string)
 {
     int len = strlen(cmd_string);
