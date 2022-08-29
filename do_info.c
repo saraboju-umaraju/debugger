@@ -17,7 +17,7 @@ int handle_info(struct argdata *arg)
     }
 
     if (NULL == tmp->help) {
-        debug("no help available for %10s\n", arg->v[0]);
+        debug("no help available for %10s\n", arg->v[1]);
         return 1;
     }
         return tmp->help();
