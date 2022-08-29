@@ -54,9 +54,14 @@ int handle_enable(struct argdata *data);
 int handle_quit(struct argdata *data);
 int handle_mem(struct argdata *data);
 int info_break(void);
+uint64_t get_pc(struct argdata *arg);
+uint64_t set_pc(struct argdata *arg, uint64_t pc);
 int cmd_match(struct cmdlist *iter, char *line);
 struct cmdlist *match_cmd(void *data, char *cmd_string);
 int process_command(char *line, size_t maxsize, struct argdata*);
 int initcmdlist(void);
 int wait_for_child(void);
+struct bplist *bp_from_address(uint64_t address);
+int disable_break(unsigned long addr, struct argdata* arg);
+int enable_break(unsigned long addr, struct argdata* arg);
 #endif // __DEBUG_H__

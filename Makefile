@@ -5,7 +5,7 @@ CFLAGS += -ggdb3 -rdynamic
 CFLAGS += -Wall
 CFLAGS += -Werror
 TARGET_ARCH = 
-TRACEE := tracee.c
+TRACEE := do_me.c
 
 SOURCES += do_debug.c
 SOURCES += do_parent.c
@@ -20,11 +20,11 @@ SOURCES += do_quit.c
 SOURCES += do_mem.c
 OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 
-cdb : $(OBJECTS) tracee 
+cdb : $(OBJECTS) do_me 
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
 	./cdb
 clean :
-	@$(RM) $(OBJECTS) cdb tracee tracee.o
+	@$(RM) $(OBJECTS) cdb do_me do_me.o
 
-tracee : tracee.o
+do_me : do_me.o
 	$(CC) $(CFLAGS) -o $@ $^

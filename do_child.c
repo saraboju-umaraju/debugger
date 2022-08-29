@@ -24,6 +24,6 @@ void child()
     sdebug ("child = %d\n", getpid());
     int status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
     exit_on_error(-1 == status);
-    char *argv[] = {"./tracee", NULL};
-    execv("./tracee", argv);
+    char *argv[] = {"./do_me", NULL};
+    execv("./do_me", argv);
 }

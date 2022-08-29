@@ -137,6 +137,22 @@ static int write_registers(struct argdata *data, struct user_regs_struct *regs)
     return 0;
 }
 
+uint64_t get_pc(struct argdata *arg)
+{
+    struct user_regs_struct regs = {0};
+    read_registers(arg, &regs);
+    return regs.rip;
+}
+
+uint64_t set_pc(struct argdata *arg, uint64_t pc)
+{
+    struct user_regs_struct regs = {0};
+    read_registers(arg, &regs);
+    regs.rip = pc;
+    write_registers(arg, &regs);
+    return 0;
+}
+
 int handle_register(struct argdata *data)
 {
     struct argdata *arg = (struct argdata*)data;
