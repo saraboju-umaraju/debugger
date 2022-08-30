@@ -139,4 +139,5 @@ int enable_break(unsigned long addr, struct argdata* arg);
 int handle_help(struct argdata *arg);
 int do_elf_load();
 int handle_elf(struct argdata *arg);
+void free_vector(struct argdata *arg);
 #endif // __DEBUG_H__

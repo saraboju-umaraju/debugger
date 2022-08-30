@@ -1,4 +1,21 @@
 #include "debug.h"
+#if defined(ALLOC_DEBUG)
+
+void *__real_malloc(size_t n);
+void __real_free(void *ptr);
+
+void *__wrap_malloc(size_t n)
+{
+    printf ("Allocating %zu bytes\n", n);
+    return __real_malloc(n);
+}
+
+void __wrap_free(void *ptr)
+{
+    printf (" __UMA__ %s %s %d\n",__FILE__,__func__,__LINE__);
+    __real_free(ptr);
+}
+#endif
 
 pid_t proc = -1;
 

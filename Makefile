@@ -11,6 +11,7 @@ CFLAGS += -Werror
 TARGET_ARCH = 
 TRACEE := do_me.c
 
+
 SOURCES += do_debug.c
 SOURCES += do_parent.c
 SOURCES += do_child.c
@@ -27,6 +28,10 @@ SOURCES += do_elf_frame.c
 SOURCES += do_elf_common.c
 SOURCES += do_elf_lines.c
 SOURCES += do_elf_attr.c
+ifeq ($(DEBUG), 1)
+  ALLOC_FLAGS += -Wl,--wrap=malloc -Wl,--wrap=free -DALLOC_DEBUG
+endif
+CFLAGS += $(ALLOC_FLAGS)
 OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 
 cdb : $(OBJECTS) do_me 

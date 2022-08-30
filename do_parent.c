@@ -54,6 +54,17 @@ int wait_for_child()
     return 0;
 }
 
+void free_vector(struct argdata *arg)
+{
+    char **ptr = NULL;
+    int k = 0;
+    ptr = arg->v;
+    for(; ptr[k] ; k++) {
+        free(ptr[k]);
+        ptr[k] = NULL;
+    }
+}
+
 void parent(void)
 {
     wait_for_child();
@@ -68,6 +79,7 @@ void parent(void)
     while ((arg = usercommand())) {
         do_run_cmd(arg);
         sdebug ("before freeing = %p\n", arg);
+        free_vector(arg);
         free(arg);
         arg = NULL;
     }

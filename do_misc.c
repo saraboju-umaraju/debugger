@@ -113,7 +113,7 @@ int process_command(char *line, size_t maxsize, struct argdata *arg)
     // just the command name
     while (token) {
         sdebug ("got %s \n",token );
-        arg->v = (char **) realloc (arg->v, sizeof(char *)*(i+1));
+        arg->v = (char **) realloc (arg->v, sizeof(char *)*(i+2));
         arg->v[i] = (char *) malloc (sizeof(char) * CMD_LEN);
         strncpy(arg->v[i++], token, CMD_LEN);
         sdebug ("got %s \n",arg->v[i-1]);
