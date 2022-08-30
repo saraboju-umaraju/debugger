@@ -1,5 +1,18 @@
 #include "debug.h"
 
+extern const char *debug_str_contents;
+extern size_t debug_str_size;
+const char *
+fetch_indirect_string (unsigned long offset)
+{
+  if (debug_str_contents == NULL)
+    return _("<no .debug_str section>");
+
+  if (offset > debug_str_size)
+    return _("<offset is too big>");
+
+  return debug_str_contents + offset;
+}
 unsigned long int
 read_leb128 (unsigned char *data, int *length_return, int sign)
 {

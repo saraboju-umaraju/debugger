@@ -26,6 +26,7 @@ SOURCES += do_elf.c
 SOURCES += do_elf_frame.c
 SOURCES += do_elf_common.c
 SOURCES += do_elf_lines.c
+SOURCES += do_elf_attr.c
 OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 
 cdb : $(OBJECTS) do_me 

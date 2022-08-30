@@ -53,10 +53,28 @@ void *
 get_data (void *var, int fd, long offset, size_t size, const char *reason);
 elf64_shdr *
 find_section (const char * name);
+unsigned char *
+read_and_display_attr (unsigned long attribute,
+		       unsigned long form,
+		       unsigned char *data,
+		       unsigned long cu_offset,
+		       unsigned long pointer_size,
+		       unsigned long offset_size,
+		       int dwarf_version);
 
+unsigned char *
+read_and_display_attr_value (unsigned long attribute,
+			     unsigned long form,
+			     unsigned char *data,
+			     unsigned long cu_offset,
+			     unsigned long pointer_size,
+			     unsigned long offset_size,
+			     int dwarf_version);
 int
 display_debug_lines (elf64_shdr *section,
 		     unsigned char *start, int file);
+const char *
+fetch_indirect_string (unsigned long offset);
 typedef struct abbrev_attr
 {
     unsigned long attribute;
