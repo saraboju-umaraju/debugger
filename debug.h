@@ -43,10 +43,38 @@ decode_location_expression (unsigned char * data,
 			    unsigned int pointer_size,
 			    unsigned long length);
 
+unsigned char *
+display_block (unsigned char *data, unsigned long length);
 struct argdata {
     pid_t cpid;
     char **v;
 };
+void *
+get_data (void *var, int fd, long offset, size_t size, const char *reason);
+elf64_shdr *
+find_section (const char * name);
+
+int
+display_debug_lines (elf64_shdr *section,
+		     unsigned char *start, int file);
+typedef struct abbrev_attr
+{
+    unsigned long attribute;
+    unsigned long form;
+    struct abbrev_attr *next;
+}
+abbrev_attr;
+
+typedef struct abbrev_entry
+{
+    unsigned long entry;
+    unsigned long tag;
+    int children;
+    struct abbrev_attr *first_attr;
+    struct abbrev_attr *last_attr;
+    struct abbrev_entry *next;
+}
+abbrev_entry;
 
 struct bplist {
     uint64_t address;
