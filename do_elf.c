@@ -586,11 +586,11 @@ struct
 debug_displays[] =
 {
     { ".debug_line",		display_debug_lines },
-#if 0
     { ".debug_info",		display_debug_info },
     { ".debug_abbrev",		display_debug_abbrev },
     { ".debug_aranges",		display_debug_aranges },
     { ".debug_frame",		display_debug_frames },
+#if 0
     { ".debug_pubnames",		display_debug_pubnames },
     { ".eh_frame",		display_debug_frames },
     { ".debug_macinfo",		display_debug_macinfo },
@@ -695,7 +695,7 @@ void dump_section_headers(int fd)
     for(; k < elf_header->e_shnum; k++) {
         read(fd, &section_header, sizeof(section_header));
         char *name = string_table + section_header.sh_name;
-        debug (" [%3d] = [%16s]\n", k, string_table + section_header.sh_name);
+        sdebug (" [%3d] = [%16s]\n", k, string_table + section_header.sh_name);
         if (0 == strncmp(name, ".debug_", 7)) {
             save_offset(fd, &off);
             display_debug_section(&section_header, fd);
@@ -705,17 +705,21 @@ void dump_section_headers(int fd)
     }
 }
 
+static int fd;
+
+int handle_elf(struct argdata *arg)
+{
+    dump_section_headers(fd);
+}
+
 int do_elf_load ()
 {
-    int fd = -1;
-
     fd = open(CHILD_PROCESS, O_RDONLY);
     exit_on_error(fd == -1);
 
     read_elf_header(fd);
     read_str_table(fd);
     read_section_headers(fd);
-    dump_section_headers(fd);
 
         return 0;
 }

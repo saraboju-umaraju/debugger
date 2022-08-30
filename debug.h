@@ -73,6 +73,10 @@ read_and_display_attr_value (unsigned long attribute,
 int
 display_debug_lines (elf64_shdr *section,
 		     unsigned char *start, int file);
+int
+display_debug_frames (elf64_shdr *section,
+		      unsigned char *start,
+		      int file );
 const char *
 fetch_indirect_string (unsigned long offset);
 typedef struct abbrev_attr
@@ -134,4 +138,5 @@ int disable_break(unsigned long addr, struct argdata* arg);
 int enable_break(unsigned long addr, struct argdata* arg);
 int handle_help(struct argdata *arg);
 int do_elf_load();
+int handle_elf(struct argdata *arg);
 #endif // __DEBUG_H__

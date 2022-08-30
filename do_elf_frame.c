@@ -161,7 +161,7 @@ get_encoded_value (unsigned char *data, int encoding)
 #define LEB()	read_leb128 (start, & length_return, 0); start += length_return
 #define SLEB()	read_leb128 (start, & length_return, 1); start += length_return
 
-static int
+int
 display_debug_frames (elf64_shdr *section,
 		      unsigned char *start,
 		      int file )

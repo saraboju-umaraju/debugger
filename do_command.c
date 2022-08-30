@@ -44,5 +44,6 @@ int initcmdlist(void)
     commands = cmd_add(commands, "quit", &handle_quit, NULL);
     commands = cmd_add(commands, "memory", &handle_mem, NULL);
     commands = cmd_add(commands, "help", &handle_help, NULL);
+    commands = cmd_add(commands, "elf", &handle_elf, NULL);
     return 0;
 }
