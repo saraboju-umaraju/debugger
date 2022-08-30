@@ -3,7 +3,11 @@
 int call_function()
 {
     printf ("Just another function\n");
-    return 0;
+    int a = 9;
+    int b = 8;
+    int c;
+    c = a + b;
+    return c;
 }
 
 int main (int argc, char *argv[])

@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
+#include <fcntl.h>
+#include <elf.h>
 #include <sys/user.h>
 #define debug(...) printf (__VA_ARGS__)
 #define sdebug(...)
@@ -20,6 +22,7 @@
 
 #define CMD_LEN 16
 #define LINE_SIZE 80
+#define str(X) #X
 
 struct argdata {
     pid_t cpid;
@@ -65,4 +68,5 @@ struct bplist *bp_from_address(uint64_t address);
 int disable_break(unsigned long addr, struct argdata* arg);
 int enable_break(unsigned long addr, struct argdata* arg);
 int handle_help(struct argdata *arg);
+int do_elf_load();
 #endif // __DEBUG_H__

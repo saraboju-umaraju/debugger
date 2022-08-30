@@ -2834,12 +2834,11 @@ void dump_section_headers(int fd)
     }
 }
 
-int main (int argc, char *argv[])
+int do_elf_load ()
 {
     int fd = -1;
 
-
-    fd = open("./for-dwarf", O_RDONLY);
+    fd = open(CHILD_PROCESS, O_RDONLY);
     exit_on_error(fd == -1);
 
     read_elf_header(fd);

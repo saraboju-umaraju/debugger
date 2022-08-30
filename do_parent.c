@@ -60,6 +60,8 @@ void parent(void)
 
     sdebug ("parent = %d\n", getpid());
 
+    do_elf_load();
+
     initcmdlist();
 
     struct argdata *arg = NULL;

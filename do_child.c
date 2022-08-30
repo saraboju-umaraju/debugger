@@ -24,6 +24,7 @@ void child()
     sdebug ("child = %d\n", getpid());
     int status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
     exit_on_error(-1 == status);
-    char *argv[] = {"./do_me", NULL};
-    execv("./do_me", argv);
+    char *argv[] = {"./", CHILD_PROCESS, NULL};
+    execvp("./do_me", argv);
+    printf (" __UMA__ %s %s %d %s\n",__FILE__,__func__,__LINE__, CHILD_PROCESS);
 }
