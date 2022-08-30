@@ -24,6 +24,25 @@
 #define LINE_SIZE 80
 #define str(X) #X
 
+#define SECTION_NAME(X)	((X) == NULL ? "<none>" : \
+        ((X)->sh_name >= string_table_length \
+         ? "<corrupt>" : string_table + (X)->sh_name))
+#define NUM_ELEM(array) 	(sizeof (array) / sizeof ((array)[0]))
+#define error debug
+#define warn debug
+#define _(...) __VA_ARGS__
+#include "dwarf.h"
+#define xmalloc malloc
+#define xrealloc realloc
+uint64_t
+byte_get (const unsigned char *field, unsigned int size);
+unsigned long int
+read_leb128 (unsigned char *data, int *length_return, int sign);
+void
+decode_location_expression (unsigned char * data,
+			    unsigned int pointer_size,
+			    unsigned long length);
+
 struct argdata {
     pid_t cpid;
     char **v;

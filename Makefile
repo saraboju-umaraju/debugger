@@ -23,6 +23,7 @@ SOURCES += do_register.c
 SOURCES += do_quit.c
 SOURCES += do_mem.c
 SOURCES += do_elf.c
+SOURCES += do_elf_frame.c
 OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 
 cdb : $(OBJECTS) do_me 
