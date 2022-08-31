@@ -17,6 +17,38 @@ void list_cus(struct comp_unit *head)
         debug("%3lu\n", tmp->cu_offset);
     }
 }
+static int
+dump_dwarf_info (struct comp_unit *head)
+{
+    abbrev_entry *entry;
+
+    struct comp_unit *tmp = head;
+    for(; tmp ; tmp = tmp->next) {
+        if (tmp->first_abbrev == NULL)
+            continue;
+
+        printf (_("  Number TAG\n"));
+        for (entry = tmp->first_abbrev; entry; entry = entry->next)
+        {
+            abbrev_attr *attr;
+
+            printf (_("   %ld      %s    [%s]\n"),
+                    entry->entry,
+                    get_TAG_name (entry->tag),
+                    entry->children ? _("has children") : _("no children"));
+
+            for (attr = entry->first_attr; attr; attr = attr->next)
+            {
+                printf (_("    %-18s %s\n"),
+                        get_AT_name (attr->attribute),
+                        get_FORM_name (attr->form));
+            }
+        }
+    }
+    printf ("\n");
+
+    return 1;
+}
 
 struct comp_unit *comp_unit_head = NULL;
 
@@ -26,6 +58,9 @@ static struct comp_unit *add_node(DWARF2_Internal_CompUnit *node, unsigned long 
     exit_on_error(tmp == NULL);
     tmp->cu_offset = cu_offset;
     memcpy(&tmp->cu, node, sizeof(DWARF2_External_CompUnit));
+    tmp->first_abbrev = NULL;
+    tmp->last_abbrev = NULL;
+    tmp->next = NULL;
     return tmp;
 }
 
@@ -90,7 +125,7 @@ free_abbrevs (void)
 }
 
     static void
-add_abbrev (unsigned long number, unsigned long tag, int children)
+add_abbrev (unsigned long number, unsigned long tag, int children, struct comp_unit *compunit)
 {
     abbrev_entry *entry;
 
@@ -107,16 +142,16 @@ add_abbrev (unsigned long number, unsigned long tag, int children)
     entry->last_attr  = NULL;
     entry->next       = NULL;
 
-    if (first_abbrev == NULL)
-        first_abbrev = entry;
+    if (compunit->first_abbrev == NULL)
+        compunit->first_abbrev = entry;
     else
-        last_abbrev->next = entry;
+        compunit->last_abbrev->next = entry;
 
-    last_abbrev = entry;
+    compunit->last_abbrev = entry;
 }
 
     static void
-add_abbrev_attr (unsigned long attribute, unsigned long form)
+add_abbrev_attr (unsigned long attribute, unsigned long form, struct comp_unit *compunit)
 {
     abbrev_attr *attr;
 
@@ -130,20 +165,20 @@ add_abbrev_attr (unsigned long attribute, unsigned long form)
     attr->form      = form;
     attr->next      = NULL;
 
-    if (last_abbrev->first_attr == NULL)
-        last_abbrev->first_attr = attr;
+    if (compunit->last_abbrev->first_attr == NULL)
+        compunit->last_abbrev->first_attr = attr;
     else
-        last_abbrev->last_attr->next = attr;
+        compunit->last_abbrev->last_attr->next = attr;
 
-    last_abbrev->last_attr = attr;
+    compunit->last_abbrev->last_attr = attr;
 }
 
 
 
     static unsigned char *
-process_abbrev_section (unsigned char *start, unsigned char *end)
+process_abbrev_section (unsigned char *start, unsigned char *end, struct comp_unit *compunit)
 {
-    if (first_abbrev != NULL)
+    if (compunit->first_abbrev != NULL)
         return NULL;
 
     while (start < end)
@@ -168,7 +203,7 @@ process_abbrev_section (unsigned char *start, unsigned char *end)
 
         children = *start++;
 
-        add_abbrev (entry, tag, children);
+        add_abbrev (entry, tag, children, compunit);
 
         do
         {
@@ -181,7 +216,7 @@ process_abbrev_section (unsigned char *start, unsigned char *end)
             start += bytes_read;
 
             if (attribute != 0)
-                add_abbrev_attr (attribute, form);
+                add_abbrev_attr (attribute, form, compunit);
         }
         while (attribute != 0);
     }
@@ -189,6 +224,7 @@ process_abbrev_section (unsigned char *start, unsigned char *end)
     return NULL;
 }
 
+#if 0
     static int
 display_debug_abbrev (elf64_shdr *section,
         unsigned char *start,
@@ -231,6 +267,7 @@ display_debug_abbrev (elf64_shdr *section,
 
     return 1;
 }
+#endif
 elf64_shdr *
 find_section (const char * name)
 {
@@ -458,7 +495,7 @@ display_debug_info (elf64_shdr *section,
 	  return 0;
 
 	process_abbrev_section (begin + compunit.cu_abbrev_offset,
-				begin + sec->sh_size);
+				begin + sec->sh_size, comp_unit_head);
 
 	free (begin);
       }
@@ -483,7 +520,7 @@ display_debug_info (elf64_shdr *section,
 
 	  /* Scan through the abbreviation list until we reach the
 	     correct entry.  */
-	  for (entry = first_abbrev;
+	  for (entry = comp_unit_head->first_abbrev;
 	       entry && entry->entry != abbrev_number;
 	       entry = entry->next)
 	    continue;
@@ -627,10 +664,10 @@ debug_displays[] =
 {
     { ".debug_line",		display_debug_lines },
     { ".debug_info",		display_debug_info },
-    { ".debug_abbrev",		display_debug_abbrev },
     { ".debug_aranges",		display_debug_aranges },
     { ".debug_frame",		display_debug_frames },
 #if 0
+    { ".debug_abbrev",		display_debug_abbrev },
     { ".debug_pubnames",		display_debug_pubnames },
     { ".eh_frame",		display_debug_frames },
     { ".debug_macinfo",		display_debug_macinfo },
@@ -750,9 +787,8 @@ static int fd;
 int handle_elf(struct argdata *arg)
 {
     if (arg->v[1] && ( 0 == strcmp("cu", arg->v[1]))) {
-        list_cus(comp_unit_head);
+        dump_dwarf_info(comp_unit_head);
     } else if (arg->v[1] == NULL) {
-        dump_section_headers(fd);
     }
 }
 
@@ -764,6 +800,7 @@ int do_elf_load ()
     read_elf_header(fd);
     read_str_table(fd);
     read_section_headers(fd);
+    dump_section_headers(fd);
 
         return 0;
 }
