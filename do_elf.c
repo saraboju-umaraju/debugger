@@ -1,6 +1,46 @@
 #include "debug.h"
 
 
+struct comp_unit
+{
+    unsigned long cu_offset;
+    DWARF2_Internal_CompUnit cu;
+    abbrev_entry *first_abbrev;
+    abbrev_entry *last_abbrev;
+    struct comp_unit *next;
+};
+
+void list_cus(struct comp_unit *head)
+{
+    struct comp_unit *tmp = head;
+    for(; tmp ; tmp = tmp->next) {
+        debug("%3lu\n", tmp->cu_offset);
+    }
+}
+
+struct comp_unit *comp_unit_head = NULL;
+
+static struct comp_unit *add_node(DWARF2_Internal_CompUnit *node, unsigned long cu_offset)
+{
+    struct comp_unit *tmp = (struct comp_unit*) malloc(sizeof(struct comp_unit));
+    exit_on_error(tmp == NULL);
+    tmp->cu_offset = cu_offset;
+    memcpy(&tmp->cu, node, sizeof(DWARF2_External_CompUnit));
+    return tmp;
+}
+
+struct comp_unit *comp_unit_add(struct comp_unit *head, DWARF2_Internal_CompUnit *node, unsigned long cu_offset)
+{
+    struct comp_unit *newnode = add_node(node, cu_offset);
+    if (NULL == head) {
+        return newnode;
+    }else {
+        newnode->next = head;
+        head = newnode;
+        return head;
+    }
+}
+
 const char *debug_str_contents;
 size_t debug_str_size;
 elf64_ehdr *elf_header = NULL;
@@ -299,7 +339,6 @@ display_debug_info (elf64_shdr *section,
 
       else
 	{
-        printf (" __UMA__ %s %s %d\n",__FILE__,__func__,__LINE__);
 	  offset_size = 4;
 	  initial_length_size = 4;
 	}
@@ -390,6 +429,7 @@ display_debug_info (elf64_shdr *section,
       printf (_("   Version:       %d\n"), compunit.cu_version);
       printf (_("   Abbrev Offset: %ld\n"), compunit.cu_abbrev_offset);
       printf (_("   Pointer Size:  %d\n"), compunit.cu_pointer_size);
+      comp_unit_head = comp_unit_add(comp_unit_head,  &compunit, cu_offset);
 
       if (compunit.cu_version != 2 && compunit.cu_version != 3)
 	{
@@ -709,7 +749,11 @@ static int fd;
 
 int handle_elf(struct argdata *arg)
 {
-    dump_section_headers(fd);
+    if (arg->v[1] && ( 0 == strcmp("cu", arg->v[1]))) {
+        list_cus(comp_unit_head);
+    } else if (arg->v[1] == NULL) {
+        dump_section_headers(fd);
+    }
 }
 
 int do_elf_load ()

@@ -119,6 +119,8 @@ int process_command(char *line, size_t maxsize, struct argdata *arg)
         sdebug ("got %s \n",arg->v[i-1]);
         token = gettok (NULL , delim) ;
     }
+
+    arg->v[i] = NULL;
     // Who even gave me a job in Nvidia lol :D
     arg->cpid = proc;
     return 0;
