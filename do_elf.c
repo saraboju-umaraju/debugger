@@ -691,18 +691,31 @@ void dump_section_headers(int fd)
 
 static int fd;
 
-int print_dwarf_info(struct comp_unit *tmp)
+int dump_compilation_units(int fd, struct comp_unit *compptr)
+{
+        printf (_("  Compilation Unit @ %lx:\n"), compptr->cu_offset);
+        printf (_("   Length:        %ld\n"), compptr->cu.cu_length);
+        printf (_("   Version:       %d\n"), compptr->cu.cu_version);
+        printf (_("   Abbrev Offset: %ld\n"), compptr->cu.cu_abbrev_offset);
+        printf (_("   Pointer Size:  %d\n"), compptr->cu.cu_pointer_size);
+}
+
+int print_dwarf_info(struct comp_unit *tmp, int (*func)(int, struct comp_unit*))
 {
     if (tmp) {
-        print_dwarf_info(tmp->next);
-        dump_dwarf_info(0, tmp);
+        print_dwarf_info(tmp->next, func);
+        func(0, tmp);
     }
 }
 
 int handle_elf(struct argdata *arg)
 {
     if (arg->v[1] && ( 0 == strcmp("dw", arg->v[1]))) {
-        print_dwarf_info(comp_unit_head);
+        print_dwarf_info(comp_unit_head, dump_dwarf_info);
+    } else if (arg->v[1] && ( 0 == strcmp("cu", arg->v[1]))) {
+        print_dwarf_info(comp_unit_head, dump_compilation_units);
+    } else if (arg->v[1] && ( 0 == strcmp("sub", arg->v[1]))) {
+        print_dwarf_info(comp_unit_head, dump_compilation_units);
     } else if (arg->v[1] == NULL) {
     }
 }
