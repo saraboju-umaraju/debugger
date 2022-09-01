@@ -5,6 +5,8 @@ struct comp_unit
 {
     unsigned long cu_offset;
     DWARF2_Internal_CompUnit cu;
+    int offset_size;
+    int initial_length_size;
     abbrev_entry *first_abbrev;
     abbrev_entry *last_abbrev;
     struct comp_unit *next;
@@ -57,27 +59,33 @@ static struct comp_unit *add_node(DWARF2_Internal_CompUnit *node, unsigned long 
     struct comp_unit *tmp = (struct comp_unit*) malloc(sizeof(struct comp_unit));
     exit_on_error(tmp == NULL);
     tmp->cu_offset = cu_offset;
-    memcpy(&tmp->cu, node, sizeof(DWARF2_External_CompUnit));
+    memcpy(&tmp->cu, node, sizeof(DWARF2_Internal_CompUnit));
     tmp->first_abbrev = NULL;
     tmp->last_abbrev = NULL;
     tmp->next = NULL;
     return tmp;
 }
 
-struct comp_unit *comp_unit_add(struct comp_unit *head, DWARF2_Internal_CompUnit *node, unsigned long cu_offset)
+struct comp_unit *comp_unit_add(struct comp_unit *head, DWARF2_Internal_CompUnit *node, unsigned long cu_offset ,int offset_size, int initial_length_size)
 {
     struct comp_unit *newnode = add_node(node, cu_offset);
+    newnode->offset_size = offset_size;
+    newnode->initial_length_size = initial_length_size;
     if (NULL == head) {
         return newnode;
     }else {
         newnode->next = head;
-        head = newnode;
-        return head;
+        //head = newnode;
+        return newnode;
     }
 }
 
 const char *debug_str_contents;
 size_t debug_str_size;
+const char *debug_abbrev_contents;
+size_t debug_abbrev_size;
+const char *debug_info_contents;
+size_t debug_info_size;
 elf64_ehdr *elf_header = NULL;
 elf64_shdr *section_headers = NULL;
 elf64_shdr *string_table_header = NULL;
@@ -96,15 +104,12 @@ free_debug_loc (void)
   debug_loc_size = 0;
 }
 
-static abbrev_entry *first_abbrev = NULL;
-static abbrev_entry *last_abbrev = NULL;
-
     static void
 free_abbrevs (void)
 {
     abbrev_entry *abbrev;
 
-    for (abbrev = first_abbrev; abbrev;)
+    for (abbrev = NULL; abbrev;)
     {
         abbrev_entry *next = abbrev->next;
         abbrev_attr *attr;
@@ -121,7 +126,7 @@ free_abbrevs (void)
         abbrev = next;
     }
 
-    last_abbrev = first_abbrev = NULL;
+    //last_abbrev = first_abbrev = NULL;
 }
 
     static void
@@ -224,50 +229,6 @@ process_abbrev_section (unsigned char *start, unsigned char *end, struct comp_un
     return NULL;
 }
 
-#if 0
-    static int
-display_debug_abbrev (elf64_shdr *section,
-        unsigned char *start,
-        int fd)
-{
-    abbrev_entry *entry;
-    unsigned char *end = start + section->sh_size;
-
-    do
-    {
-        start = process_abbrev_section (start, end);
-
-        if (first_abbrev == NULL)
-            continue;
-
-        printf (_("  Number TAG\n"));
-
-        for (entry = first_abbrev; entry; entry = entry->next)
-        {
-            abbrev_attr *attr;
-
-            printf (_("   %ld      %s    [%s]\n"),
-                    entry->entry,
-                    get_TAG_name (entry->tag),
-                    entry->children ? _("has children") : _("no children"));
-
-            for (attr = entry->first_attr; attr; attr = attr->next)
-            {
-                printf (_("    %-18s %s\n"),
-                        get_AT_name (attr->attribute),
-                        get_FORM_name (attr->form));
-            }
-        }
-
-        free_abbrevs ();
-    }
-    while (start);
-
-    printf ("\n");
-
-    return 1;
-}
-#endif
 elf64_shdr *
 find_section (const char * name)
 {
@@ -283,6 +244,46 @@ find_section (const char * name)
     return sec;
 
   return NULL;
+}
+
+static void
+load_debug_abbrev (int fd)
+{
+  elf64_shdr *sec;
+
+  /* If it is already loaded, do nothing.  */
+  if (debug_abbrev_contents != NULL)
+    return;
+
+  /* Locate the .debug_loc section.  */
+  sec = find_section (".debug_abbrev");
+  if (sec == NULL)
+    return;
+
+  debug_abbrev_size = sec->sh_size;
+
+  debug_abbrev_contents = get_data (NULL, fd, sec->sh_offset, sec->sh_size,
+				 _("debug_loc section data"));
+}
+
+static void
+load_debug_info (int fd)
+{
+  elf64_shdr *sec;
+
+  /* If it is already loaded, do nothing.  */
+  if (debug_info_contents != NULL)
+    return;
+
+  /* Locate the .debug_loc section.  */
+  sec = find_section (".debug_info");
+  if (sec == NULL)
+    return;
+
+  debug_info_size = sec->sh_size;
+
+  debug_info_contents = get_data (NULL, fd, sec->sh_offset, sec->sh_size,
+				 _("debug_loc section data"));
 }
 
 
@@ -335,228 +336,6 @@ load_debug_loc (int fd)
 
   debug_loc_contents = get_data (NULL, fd, sec->sh_offset, sec->sh_size,
 				 _("debug_loc section data"));
-}
-static int
-display_debug_info (elf64_shdr *section,
-		    unsigned char *start,
-		    int fd)
-{
-  unsigned char *end = start + section->sh_size;
-  unsigned char *section_begin = start;
-
-  printf (_("The section %s contains:\n\n"), SECTION_NAME (section));
-
-  load_debug_str (fd);
-  load_debug_loc (fd);
-
-  while (start < end)
-    {
-      DWARF2_Internal_CompUnit compunit;
-      //Elf_Internal_Shdr *relsec;
-      unsigned char *hdrptr;
-      unsigned char *cu_abbrev_offset_ptr;
-      unsigned char *tags;
-      int level;
-      unsigned long cu_offset;
-      int offset_size;
-      int initial_length_size;
-
-      hdrptr = start;
-
-      compunit.cu_length = byte_get (hdrptr, 4);
-      hdrptr += 4;
-
-      if (compunit.cu_length == 0xffffffff)
-	{
-	  compunit.cu_length = byte_get (hdrptr, 8);
-	  hdrptr += 8;
-	  offset_size = 8;
-	  initial_length_size = 12;
-    }
-
-      else
-	{
-	  offset_size = 4;
-	  initial_length_size = 4;
-	}
-
-      compunit.cu_version = byte_get (hdrptr, 2);
-      hdrptr += 2;
-#if 0
-      /* Apply addends of RELA relocations.  */
-      for (relsec = section_headers;
-	   relsec < section_headers + elf_header.e_shnum;
-	   ++relsec)
-	{
-	  unsigned long nrelas;
-	  Elf_Internal_Rela *rela, *rp;
-	  Elf_Internal_Shdr *symsec;
-	  Elf_Internal_Sym *symtab;
-	  Elf_Internal_Sym *sym;
-
-	  if (relsec->sh_type != SHT_RELA
-	      || SECTION_HEADER (relsec->sh_info) != section
-	      || relsec->sh_size == 0)
-	    continue;
-
-	  if (!slurp_rela_relocs (file, relsec->sh_offset, relsec->sh_size,
-				  & rela, & nrelas))
-	    return 0;
-
-	  symsec = SECTION_HEADER (relsec->sh_link);
-	  symtab = GET_ELF_SYMBOLS (file, symsec);
-
-	  for (rp = rela; rp < rela + nrelas; ++rp)
-	    {
-	      unsigned char *loc;
-
-	      if (rp->r_offset >= (bfd_vma) (hdrptr - section_begin)
-		  && section->sh_size > (bfd_vma) offset_size
-		  && rp->r_offset <= section->sh_size - offset_size)
-		loc = section_begin + rp->r_offset;
-	      else
-		continue;
-
-	      if (is_32bit_elf)
-		{
-		  sym = symtab + ELF32_R_SYM (rp->r_info);
-
-		  if (ELF32_R_SYM (rp->r_info) != 0
-		      && ELF32_ST_TYPE (sym->st_info) != STT_SECTION)
-		    {
-		      warn (_("Skipping unexpected symbol type %u\n"),
-			    ELF32_ST_TYPE (sym->st_info));
-		      continue;
-		    }
-		}
-	      else
-		{
-		  sym = symtab + ELF64_R_SYM (rp->r_info);
-
-		  if (ELF64_R_SYM (rp->r_info) != 0
-		      && ELF64_ST_TYPE (sym->st_info) != STT_SECTION)
-		    {
-		      warn (_("Skipping unexpected symbol type %u\n"),
-			    ELF64_ST_TYPE (sym->st_info));
-		      continue;
-		    }
-		}
-
-	      byte_put (loc, rp->r_addend, offset_size);
-	    }
-
-	  free (rela);
-	  break;
-	}
-#endif
-
-      cu_abbrev_offset_ptr = hdrptr;
-      compunit.cu_abbrev_offset = byte_get (hdrptr, offset_size);
-      hdrptr += offset_size;
-
-      compunit.cu_pointer_size = byte_get (hdrptr, 1);
-      hdrptr += 1;
-
-      tags = hdrptr;
-      cu_offset = start - section_begin;
-      start += compunit.cu_length + initial_length_size;
-
-      printf (_("  Compilation Unit @ %lx:\n"), cu_offset);
-      printf (_("   Length:        %ld\n"), compunit.cu_length);
-      printf (_("   Version:       %d\n"), compunit.cu_version);
-      printf (_("   Abbrev Offset: %ld\n"), compunit.cu_abbrev_offset);
-      printf (_("   Pointer Size:  %d\n"), compunit.cu_pointer_size);
-      comp_unit_head = comp_unit_add(comp_unit_head,  &compunit, cu_offset);
-
-      if (compunit.cu_version != 2 && compunit.cu_version != 3)
-	{
-	  warn (_("Only version 2 and 3 DWARF debug information is currently supported.\n"));
-	  continue;
-	}
-
-      free_abbrevs ();
-
-      /* Read in the abbrevs used by this compilation unit.  */
-      {
-	elf64_shdr *sec;
-	unsigned char *begin;
-
-	/* Locate the .debug_abbrev section and process it.  */
-	sec = find_section (".debug_abbrev");
-	if (sec == NULL)
-	  {
-	    warn (_("Unable to locate .debug_abbrev section!\n"));
-	    return 0;
-	  }
-
-	begin = get_data (NULL, fd, sec->sh_offset, sec->sh_size,
-			  _("debug_abbrev section data"));
-	if (!begin)
-	  return 0;
-
-	process_abbrev_section (begin + compunit.cu_abbrev_offset,
-				begin + sec->sh_size, comp_unit_head);
-
-	free (begin);
-      }
-
-      level = 0;
-      while (tags < start)
-	{
-	  int bytes_read;
-	  unsigned long abbrev_number;
-	  abbrev_entry *entry;
-	  abbrev_attr *attr;
-
-	  abbrev_number = read_leb128 (tags, & bytes_read, 0);
-	  tags += bytes_read;
-
-	  /* A null DIE marks the end of a list of children.  */
-	  if (abbrev_number == 0)
-	    {
-	      --level;
-	      continue;
-	    }
-
-	  /* Scan through the abbreviation list until we reach the
-	     correct entry.  */
-	  for (entry = comp_unit_head->first_abbrev;
-	       entry && entry->entry != abbrev_number;
-	       entry = entry->next)
-	    continue;
-
-	  if (entry == NULL)
-	    {
-	      warn (_("Unable to locate entry %lu in the abbreviation table\n"),
-		    abbrev_number);
-	      return 0;
-	    }
-
-	  printf (_(" <%d><%lx>: Abbrev Number: %lu (%s)\n"),
-		  level,
-		  (unsigned long) (tags - section_begin - bytes_read),
-		  abbrev_number,
-		  get_TAG_name (entry->tag));
-
-	  for (attr = entry->first_attr; attr; attr = attr->next)
-	    tags = read_and_display_attr (attr->attribute,
-					  attr->form,
-					  tags, cu_offset,
-					  compunit.cu_pointer_size,
-					  offset_size,
-					  compunit.cu_version);
-
-	  if (entry->children)
-	    ++level;
-	}
-    }
-
-  free_debug_str ();
-  free_debug_loc ();
-
-  printf ("\n");
-
-  return 1;
 }
 static int
 display_debug_aranges (elf64_shdr *section,
@@ -663,10 +442,10 @@ struct
 debug_displays[] =
 {
     { ".debug_line",		display_debug_lines },
-    { ".debug_info",		display_debug_info },
     { ".debug_aranges",		display_debug_aranges },
     { ".debug_frame",		display_debug_frames },
 #if 0
+    { ".debug_info",		display_debug_info },
     { ".debug_abbrev",		display_debug_abbrev },
     { ".debug_pubnames",		display_debug_pubnames },
     { ".eh_frame",		display_debug_frames },
@@ -679,49 +458,6 @@ debug_displays[] =
     { ".debug_weaknames",		display_debug_not_supported }
 #endif
 };
-static int
-display_debug_section (elf64_shdr *section, int fd)
-{
-  char *name = SECTION_NAME (section);
-  size_t length;
-  unsigned char *start;
-  int i;
-
-  length = section->sh_size;
-  if (length == 0)
-    {
-      printf (_("\nSection '%s' has no debugging data.\n"), name);
-      return 0;
-    }
-
-  start = get_data (NULL, fd, section->sh_offset, length,
-		    _("debug section data"));
-  if (!start)
-    return 0;
-
-  /* See if we know how to display the contents of this section.  */
-  if (strncmp (name, ".gnu.linkonce.wi.", 17) == 0)
-    name = ".debug_info";
-
-  for (i = NUM_ELEM (debug_displays); i--;)
-    if (strcmp (debug_displays[i].name, name) == 0)
-      {
-	if (debug_displays[i].display)
-	debug_displays[i].display (section, start, fd);
-	break;
-      }
-
-  if (i == -1)
-    printf (_("Unrecognized debug section: %s\n"), name);
-
-  free (start);
-
-  /* If we loaded in the abbrev section at some point,
-     we must release it here.  */
-  free_abbrevs ();
-
-  return 1;
-}
 
 void
 save_offset(int fd, unsigned long long *off)
@@ -734,6 +470,149 @@ restore_offset(int fd, unsigned long long off)
 {
     lseek(fd, off, SEEK_SET);
 }
+
+#if 1
+
+static int display_child_dies(char *tags, char *start, struct comp_unit *cu)
+{
+    //printf("__UMA__ %p %p\n", tags, (start - compunit.cu_length - initial_length_size + 4 + 2 + offset_size + 1));
+      int level = 0;
+      while (tags < start)
+	{
+	  int bytes_read;
+	  unsigned long abbrev_number;
+	  abbrev_entry *entry;
+	  abbrev_attr *attr;
+
+	  abbrev_number = read_leb128 (tags, & bytes_read, 0);
+	  tags += bytes_read;
+
+	  /* A null DIE marks the end of a list of children.  */
+	  if (abbrev_number == 0)
+	    {
+	      --level;
+	      continue;
+	    }
+
+	  /* Scan through the abbreviation list until we reach the
+	     correct entry.  */
+	  for (entry = cu->first_abbrev;
+	       entry && entry->entry != abbrev_number;
+	       entry = entry->next)
+	    continue;
+
+	  if (entry == NULL)
+	    {
+	      warn (_("Unable to locate entry %lu in the abbreviation table\n"),
+		    abbrev_number);
+	      return 0;
+	    }
+
+	  printf (_(" <%d><%lx>: Abbrev Number: %lu (%s)\n"),
+		  level,
+		  (unsigned long) (tags - debug_info_contents - bytes_read),
+		  abbrev_number,
+		  get_TAG_name (entry->tag));
+
+	  for (attr = entry->first_attr; attr; attr = attr->next)
+	    tags = read_and_display_attr (attr->attribute,
+					  attr->form,
+					  tags, cu->cu_offset,
+					  cu->cu.cu_pointer_size,
+					  cu->offset_size,
+					  cu->cu.cu_version);
+
+	  if (entry->children)
+	    ++level;
+	}
+	      return 1;
+}
+#endif
+#if 1
+static int
+process_debug_info (int fd)
+{
+  unsigned char *start = (unsigned char *) debug_info_contents;
+  unsigned char *end = start + debug_info_size;
+  unsigned char *section_begin = start;
+
+  printf (_("The section %s contains:\n\n"), ".debug_info");
+
+  while (start < end)
+    {
+      DWARF2_Internal_CompUnit compunit;
+      unsigned char *hdrptr;
+      unsigned char *cu_abbrev_offset_ptr;
+      unsigned char *tags;
+      int level;
+      unsigned long cu_offset;
+      int offset_size;
+      int initial_length_size;
+
+      hdrptr = start;
+
+      compunit.cu_length = byte_get (hdrptr, 4);
+      hdrptr += 4;
+
+      if (compunit.cu_length == 0xffffffff)
+	{
+	  compunit.cu_length = byte_get (hdrptr, 8);
+	  hdrptr += 8;
+	  offset_size = 8;
+	  initial_length_size = 12;
+    }
+
+      else
+	{
+	  offset_size = 4;
+	  initial_length_size = 4;
+	}
+
+      compunit.cu_version = byte_get (hdrptr, 2);
+      hdrptr += 2;
+
+      cu_abbrev_offset_ptr = hdrptr;
+      compunit.cu_abbrev_offset = byte_get (hdrptr, offset_size);
+      hdrptr += offset_size;
+
+      compunit.cu_pointer_size = byte_get (hdrptr, 1);
+      hdrptr += 1;
+
+      tags = hdrptr;
+      cu_offset = start - section_begin;
+      start += compunit.cu_length + initial_length_size;
+
+      printf (_("  Compilation Unit @ %lx:\n"), cu_offset);
+      printf (_("   Length:        %ld\n"), compunit.cu_length);
+      printf (_("   Version:       %d\n"), compunit.cu_version);
+      printf (_("   Abbrev Offset: %ld\n"), compunit.cu_abbrev_offset);
+      printf (_("   Pointer Size:  %d\n"), compunit.cu_pointer_size);
+      comp_unit_head = comp_unit_add(comp_unit_head,  &compunit, cu_offset, offset_size, initial_length_size);
+
+      if (compunit.cu_version != 2 && compunit.cu_version != 3)
+	{
+	  warn (_("Only version 2 and 3 DWARF debug information is currently supported.\n"));
+	  continue;
+	}
+
+      /* Read in the abbrevs used by this compilation unit.  */
+	unsigned char *begin = (char *) debug_abbrev_contents;
+
+	process_abbrev_section (begin + compunit.cu_abbrev_offset,
+				begin + debug_info_size, comp_unit_head);
+
+    //printf("__UMA__ %p %p\n", tags, (start - compunit.cu_length - initial_length_size + 4 + 2 + offset_size + 1));
+    //printf("__UMA__ %p %p\n", tags, (start));
+    printf("__UMA__ %lx %p %p\n", cu_offset, tags, (start));
+    display_child_dies(tags, start, comp_unit_head);
+    }
+
+
+  printf ("\n");
+
+  return 1;
+}
+#endif
 
 
 void read_elf_header(int fd)
@@ -775,7 +654,7 @@ void dump_section_headers(int fd)
         sdebug (" [%3d] = [%16s]\n", k, string_table + section_header.sh_name);
         if (0 == strncmp(name, ".debug_", 7)) {
             save_offset(fd, &off);
-            display_debug_section(&section_header, fd);
+            //display_debug_section(&section_header, fd);
             restore_offset(fd, off);
         }
         memset(&section_header, 0, sizeof(section_header));
@@ -786,10 +665,30 @@ static int fd;
 
 int handle_elf(struct argdata *arg)
 {
+    struct comp_unit *tmp = comp_unit_head;
+    printf (" __UMA__ %s %s %d\n",__FILE__,__func__,__LINE__); 
+    //for(; tmp ; tmp = tmp->next) {
+        //show_1(0, tmp);
+    //}
+    return 0;
     if (arg->v[1] && ( 0 == strcmp("cu", arg->v[1]))) {
         dump_dwarf_info(comp_unit_head);
     } else if (arg->v[1] == NULL) {
     }
+}
+
+static int
+load_required_sections()
+{
+    load_debug_str (fd);
+    load_debug_loc (fd);
+    load_debug_abbrev(fd);
+    load_debug_info(fd);
+}
+
+void show()
+{
+    process_debug_info(0);
 }
 
 int do_elf_load ()
@@ -800,7 +699,9 @@ int do_elf_load ()
     read_elf_header(fd);
     read_str_table(fd);
     read_section_headers(fd);
-    dump_section_headers(fd);
+    load_required_sections();
+    show();
+   //dump_section_headers(fd);
 
         return 0;
 }

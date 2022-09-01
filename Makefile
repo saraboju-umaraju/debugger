@@ -3,7 +3,8 @@ CLANG := clang
 RM := /bin/rm -rf
 PRINTF := printf
 ECHO := echo
-CFLAGS += -DCHILD_PROCESS="\"do_me\""
+CFLAGS += -DCHILD_PROCESS="\"cdb\""
+#CFLAGS += -DCHILD_PROCESS="\"do_me\""
 CFLAGS += -gdwarf-2
 CFLAGS += -ggdb3 -rdynamic
 CFLAGS += -Wfatal-errors
@@ -37,7 +38,7 @@ OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 cdb : $(OBJECTS) do_me 
 	@$(CC) $(CFLAGS) -o $@ $(OBJECTS)
 	@$(PRINTF) 'LINK %-10s\n' "$@"
-	@./cdb
+	#@./cdb
 clean :
 	@$(RM) $(OBJECTS) cdb do_me do_me.o dwarf dwarf.o for-dwarf for-dwarf.o
 
