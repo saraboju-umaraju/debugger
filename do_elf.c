@@ -785,6 +785,10 @@ int handle_elf(struct argdata *arg)
         print_dwarf_info_with_tag(comp_unit_head, go_through_and_find, DW_TAG_subprogram);
     } else if (arg->v[1] && ( 0 == strcmp("cus", arg->v[1]))) {
         print_dwarf_info_with_tag(comp_unit_head, go_through_and_find, DW_TAG_compile_unit);
+    } else if (arg->v[1] && ( 0 == strcmp("variable", arg->v[1]))) {
+        print_dwarf_info_with_tag(comp_unit_head, go_through_and_find, DW_TAG_variable);
+    } else if (arg->v[1] && ( 0 == strcmp("struct", arg->v[1]))) {
+        print_dwarf_info_with_tag(comp_unit_head, go_through_and_find, DW_TAG_structure_type);
     } else if (arg->v[1] == NULL) {
     }
 }
