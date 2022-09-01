@@ -61,6 +61,14 @@ read_and_display_attr (unsigned long attribute,
 		       unsigned long pointer_size,
 		       unsigned long offset_size,
 		       int dwarf_version);
+unsigned char *
+read_attr (unsigned long attribute,
+		       unsigned long form,
+		       unsigned char *data,
+		       unsigned long cu_offset,
+		       unsigned long pointer_size,
+		       unsigned long offset_size,
+		       int dwarf_version);
 
 unsigned char *
 read_and_display_attr_value (unsigned long attribute,

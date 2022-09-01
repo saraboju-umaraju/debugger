@@ -1,4 +1,159 @@
 #include "debug.h"
+unsigned char *
+read_attr_value (unsigned long attribute,
+			     unsigned long form,
+			     unsigned char *data,
+			     unsigned long cu_offset,
+			     unsigned long pointer_size,
+			     unsigned long offset_size,
+			     int dwarf_version)
+{
+  unsigned long uvalue = 0;
+  unsigned char *block_start = NULL;
+  int bytes_read;
+
+  switch (form)
+    {
+    default:
+      break;
+
+    case DW_FORM_ref_addr:
+      if (dwarf_version == 2)
+	{
+	  uvalue = byte_get (data, pointer_size);
+	  data += pointer_size;
+	}
+      else if (dwarf_version == 3)
+	{
+	  uvalue = byte_get (data, offset_size);
+	  data += offset_size;
+	}
+      else
+        {
+	  error (_("Internal error: DWARF version is not 2 or 3.\n"));
+	}
+      break;
+
+    case DW_FORM_addr:
+      uvalue = byte_get (data, pointer_size);
+      data += pointer_size;
+      break;
+
+    case DW_FORM_strp:
+      uvalue = byte_get (data, offset_size);
+      data += offset_size;
+      break;
+
+    case DW_FORM_ref1:
+    case DW_FORM_flag:
+    case DW_FORM_data1:
+      uvalue = byte_get (data++, 1);
+      break;
+
+    case DW_FORM_ref2:
+    case DW_FORM_data2:
+      uvalue = byte_get (data, 2);
+      data += 2;
+      break;
+
+    case DW_FORM_ref4:
+    case DW_FORM_data4:
+      uvalue = byte_get (data, 4);
+      data += 4;
+      break;
+
+    case DW_FORM_sdata:
+      uvalue = read_leb128 (data, & bytes_read, 1);
+      data += bytes_read;
+      break;
+
+    case DW_FORM_ref_udata:
+    case DW_FORM_udata:
+      uvalue = read_leb128 (data, & bytes_read, 0);
+      data += bytes_read;
+      break;
+
+    case DW_FORM_indirect:
+      form = read_leb128 (data, & bytes_read, 0);
+      data += bytes_read;
+      return read_attr_value (attribute, form, data, cu_offset,
+					  pointer_size, offset_size,
+					  dwarf_version);
+    }
+
+  switch (form)
+    {
+    case DW_FORM_ref_addr:
+      break;
+
+    case DW_FORM_ref1:
+    case DW_FORM_ref2:
+    case DW_FORM_ref4:
+    case DW_FORM_ref_udata:
+      break;
+
+    case DW_FORM_addr:
+      break;
+
+    case DW_FORM_flag:
+    case DW_FORM_data1:
+    case DW_FORM_data2:
+    case DW_FORM_data4:
+    case DW_FORM_sdata:
+    case DW_FORM_udata:
+      break;
+
+    case DW_FORM_ref8:
+    case DW_FORM_data8:
+      uvalue = byte_get (data, 4);
+      byte_get (data + 4, 4);
+      data += 8;
+      break;
+
+    case DW_FORM_string:
+      data += strlen ((char *) data) + 1;
+      break;
+
+    case DW_FORM_block:
+      uvalue = read_leb128 (data, & bytes_read, 0);
+      block_start = data + bytes_read;
+      data = (block_start + uvalue);
+      break;
+
+    case DW_FORM_block1:
+      uvalue = byte_get (data, 1);
+      block_start = data + 1;
+      data = (block_start + uvalue);
+      break;
+
+    case DW_FORM_block2:
+      uvalue = byte_get (data, 2);
+      block_start = data + 2;
+      data = (block_start + uvalue);
+      break;
+
+    case DW_FORM_block4:
+      uvalue = byte_get (data, 4);
+      block_start = data + 4;
+      data = (block_start + uvalue);
+      break;
+
+    case DW_FORM_strp:
+      break;
+
+    case DW_FORM_indirect:
+      /* Handled above.  */
+      break;
+
+    default:
+      //warn (_("Unrecognized form: %d\n"), form);
+      break;
+    }
+
+  /* For some attributes we can display further information.  */
+
+  return data;
+}
 
 unsigned char *
 read_and_display_attr_value (unsigned long attribute,
@@ -349,6 +504,20 @@ read_and_display_attr (unsigned long attribute,
   data = read_and_display_attr_value (attribute, form, data, cu_offset,
 				      pointer_size, offset_size, dwarf_version);
   printf ("\n");
+  return data;
+}
+
+unsigned char *
+read_attr (unsigned long attribute,
+		       unsigned long form,
+		       unsigned char *data,
+		       unsigned long cu_offset,
+		       unsigned long pointer_size,
+		       unsigned long offset_size,
+		       int dwarf_version)
+{
+  data = read_attr_value (attribute, form, data, cu_offset,
+				      pointer_size, offset_size, dwarf_version);
   return data;
 }
 

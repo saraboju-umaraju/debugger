@@ -3,8 +3,8 @@ CLANG := clang
 RM := /bin/rm -rf
 PRINTF := printf
 ECHO := echo
-CFLAGS += -DCHILD_PROCESS="\"cdb\""
-#CFLAGS += -DCHILD_PROCESS="\"do_me\""
+#CFLAGS += -DCHILD_PROCESS="\"cdb\""
+CFLAGS += -DCHILD_PROCESS="\"do_me\""
 CFLAGS += -gdwarf-2
 CFLAGS += -ggdb3 -rdynamic
 CFLAGS += -Wfatal-errors
@@ -40,17 +40,21 @@ cdb : $(OBJECTS) do_me
 	@$(PRINTF) 'LINK %-10s\n' "$@"
 	#@./cdb
 clean :
-	@$(RM) $(OBJECTS) cdb do_me do_me.o dwarf dwarf.o for-dwarf for-dwarf.o
+	@$(RM) $(OBJECTS) cdb do_me do_me.o dwarf dwarf.o for-dwarf for-dwarf.o do_me_helper.o
 
 for-dwarf.o : for-dwarf.c
+	@$(CLANG) -gdwarf-2 -c -o $@ $^
+do_me.o : do_me.c
+	@$(CLANG) -gdwarf-2 -c -o $@ $^
+do_me_helper.o : do_me_helper.c
 	@$(CLANG) -gdwarf-2 -c -o $@ $^
 
 %.o : %.c 
 	@$(CC) $(CFLAGS) -c -o $@ $^
 	@$(PRINTF) 'COMPILE %-10s\n' "$<"
 
-do_me : do_me.o
-	@$(CC) $(CFLAGS) -o $@ $^
+do_me : do_me.o do_me_helper.o
+	@$(CLANG) $(CFLAGS) -o $@ $^
 	@$(PRINTF) 'LINK %-10s\n' "$@"
 
 dwarf : dwarf.o for-dwarf

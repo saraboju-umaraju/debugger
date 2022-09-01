@@ -1,14 +1,6 @@
 #include <stdio.h>
 
-int call_function()
-{
-    printf ("Just another function\n");
-    int a = 9;
-    int b = 8;
-    int c;
-    c = a + b;
-    return c;
-}
+extern int call_function();
 
 int main (int argc, char *argv[])
 {

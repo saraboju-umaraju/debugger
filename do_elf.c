@@ -478,9 +478,69 @@ restore_offset(int fd, unsigned long long off)
 }
 
 #if 1
-
-static int display_child_dies(char *tags, char *start, struct comp_unit *cu)
+static int go_through_and_find(int fd, struct comp_unit *cu)
 {
+    char *tags = cu->tags;
+    char *start = cu->start;
+      int level = 0;
+      while (tags < start)
+	{
+	  int bytes_read;
+	  unsigned long abbrev_number;
+	  abbrev_entry *entry;
+	  abbrev_attr *attr;
+
+	  abbrev_number = read_leb128 (tags, & bytes_read, 0);
+	  tags += bytes_read;
+
+	  if (abbrev_number == 0)
+	    {
+	      --level;
+	      continue;
+	    }
+
+	  /* Scan through the abbreviation list until we reach the
+	     correct entry.  */
+	  for (entry = cu->first_abbrev;
+	       entry && entry->entry != abbrev_number;
+	       entry = entry->next)
+	    continue;
+
+	  if (entry == NULL)
+	    {
+	      warn (_("Unable to locate entry %lu in the abbreviation table\n"),
+		    abbrev_number);
+	      return 0;
+	    }
+      if (entry->tag != DW_TAG_subprogram)  {
+          for (attr = entry->first_attr; attr; attr = attr->next)
+              tags = read_attr (attr->attribute,
+                      attr->form,
+                      tags, cu->cu_offset,
+                      cu->cu.cu_pointer_size,
+                      cu->offset_size,
+                      cu->cu.cu_version);
+      } else {
+
+          for (attr = entry->first_attr; attr; attr = attr->next)
+              tags = read_and_display_attr (attr->attribute,
+                      attr->form,
+                      tags, cu->cu_offset,
+                      cu->cu.cu_pointer_size,
+                      cu->offset_size,
+                      cu->cu.cu_version);
+      }
+
+	  if (entry->children)
+	    ++level;
+	}
+	      return 1;
+}
+
+static int display_child_dies(struct comp_unit *cu)
+{
+    char *tags = cu->tags;
+    char *start = cu->start;
       int level = 0;
       while (tags < start)
 	{
@@ -560,7 +620,7 @@ dump_dwarf_info (int fd, struct comp_unit *compptr)
         printf (_("   Abbrev Offset: %ld\n"), compptr->cu.cu_abbrev_offset);
         printf (_("   Pointer Size:  %d\n"), compptr->cu.cu_pointer_size);
 
-        display_child_dies(compptr->tags, compptr->start, compptr);
+        display_child_dies(compptr);
     }
 
     printf ("\n");
@@ -715,7 +775,7 @@ int handle_elf(struct argdata *arg)
     } else if (arg->v[1] && ( 0 == strcmp("cu", arg->v[1]))) {
         print_dwarf_info(comp_unit_head, dump_compilation_units);
     } else if (arg->v[1] && ( 0 == strcmp("sub", arg->v[1]))) {
-        print_dwarf_info(comp_unit_head, dump_compilation_units);
+        print_dwarf_info(comp_unit_head, go_through_and_find);
     } else if (arg->v[1] == NULL) {
     }
 }
