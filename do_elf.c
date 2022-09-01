@@ -21,6 +21,7 @@ void list_cus(struct comp_unit *head)
         debug("%3lu\n", tmp->cu_offset);
     }
 }
+#if 0
 static int
 dump_dwarf_info (struct comp_unit *head)
 {
@@ -53,6 +54,7 @@ dump_dwarf_info (struct comp_unit *head)
 
     return 1;
 }
+#endif
 
 struct comp_unit *comp_unit_head = NULL;
 
@@ -479,7 +481,6 @@ restore_offset(int fd, unsigned long long off)
 
 static int display_child_dies(char *tags, char *start, struct comp_unit *cu)
 {
-    //printf("__UMA__ %p %p\n", tags, (start - compunit.cu_length - initial_length_size + 4 + 2 + offset_size + 1));
       int level = 0;
       while (tags < start)
 	{
@@ -533,7 +534,7 @@ static int display_child_dies(char *tags, char *start, struct comp_unit *cu)
 }
 #endif
 static int
-show_1 (int fd, struct comp_unit *compptr)
+dump_dwarf_info (int fd, struct comp_unit *compptr)
 {
     unsigned char *start = (unsigned char *) debug_info_contents;
     unsigned char *end = start + debug_info_size;
@@ -546,15 +547,10 @@ show_1 (int fd, struct comp_unit *compptr)
         unsigned char *tags;
         int level;
         hdrptr = start;
-
         hdrptr += 4;
-
         hdrptr += 2;
-
         hdrptr += compptr->offset_size;
-
         hdrptr += 1;
-
         tags = hdrptr;
         start += compptr->cu.cu_length + compptr->initial_length_size;
 
@@ -564,18 +560,14 @@ show_1 (int fd, struct comp_unit *compptr)
         printf (_("   Abbrev Offset: %ld\n"), compptr->cu.cu_abbrev_offset);
         printf (_("   Pointer Size:  %d\n"), compptr->cu.cu_pointer_size);
 
-        //printf("__UMA__ %p %p\n", tags, (start - compptr->cu.cu_length - compptr->initial_length_size + 4 + 2 + compptr->offset_size + 1));
-        //    printf("__UMA__ %lx %p %p\n", compptr->cu_offset, tags, (start));
         display_child_dies(compptr->tags, compptr->start, compptr);
     }
-
 
     printf ("\n");
 
     return 1;
 }
 
-#if 1
 static int
 process_debug_info (int fd)
 {
@@ -628,13 +620,6 @@ process_debug_info (int fd)
       tags = hdrptr;
       cu_offset = start - section_begin;
       start += compunit.cu_length + initial_length_size;
-#if 0
-      printf (_("  Compilation Unit @ %lx:\n"), cu_offset);
-      printf (_("   Length:        %ld\n"), compunit.cu_length);
-      printf (_("   Version:       %d\n"), compunit.cu_version);
-      printf (_("   Abbrev Offset: %ld\n"), compunit.cu_abbrev_offset);
-      printf (_("   Pointer Size:  %d\n"), compunit.cu_pointer_size);
-#endif
       comp_unit_head = comp_unit_add(comp_unit_head,  &compunit, cu_offset, offset_size, initial_length_size, start, tags);
 
       if (compunit.cu_version != 2 && compunit.cu_version != 3)
@@ -649,10 +634,6 @@ process_debug_info (int fd)
 	process_abbrev_section (begin + compunit.cu_abbrev_offset,
 				begin + debug_info_size, comp_unit_head);
 
-    //printf("__UMA__ %p %p\n", tags, (start - compunit.cu_length - initial_length_size + 4 + 2 + offset_size + 1));
-    //printf("__UMA__ %p %p\n", tags, (start));
-    //printf("__UMA__ %lx %p %p\n", cu_offset, tags, (start));
-    //display_child_dies(tags, start, comp_unit_head);
     }
 
 
@@ -660,7 +641,6 @@ process_debug_info (int fd)
 
   return 1;
 }
-#endif
 
 
 void read_elf_header(int fd)
@@ -715,21 +695,14 @@ int print_dwarf_info(struct comp_unit *tmp)
 {
     if (tmp) {
         print_dwarf_info(tmp->next);
-        show_1(0, tmp);
+        dump_dwarf_info(0, tmp);
     }
 }
 
 int handle_elf(struct argdata *arg)
 {
-    print_dwarf_info(comp_unit_head);
-    return 0;
-    struct comp_unit *tmp = comp_unit_head;
-    printf (" __UMA__  END %s %s %d\n",__FILE__,__func__,__LINE__); 
-    for(; tmp ; tmp = tmp->next) {
-        show_1(0, tmp);
-    }
-    if (arg->v[1] && ( 0 == strcmp("cu", arg->v[1]))) {
-        dump_dwarf_info(comp_unit_head);
+    if (arg->v[1] && ( 0 == strcmp("dw", arg->v[1]))) {
+        print_dwarf_info(comp_unit_head);
     } else if (arg->v[1] == NULL) {
     }
 }
@@ -743,11 +716,6 @@ load_required_sections()
     load_debug_info(fd);
 }
 
-void show()
-{
-    process_debug_info(0);
-}
-
 int do_elf_load ()
 {
     fd = open(CHILD_PROCESS, O_RDONLY);
@@ -757,9 +725,9 @@ int do_elf_load ()
     read_str_table(fd);
     read_section_headers(fd);
     load_required_sections();
-    show();
-   //dump_section_headers(fd);
+    process_debug_info(0);
+    //dump_section_headers(fd);
 
-        return 0;
+    return 0;
 }
 
