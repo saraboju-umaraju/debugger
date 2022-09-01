@@ -478,7 +478,7 @@ restore_offset(int fd, unsigned long long off)
 }
 
 #if 1
-static int go_through_and_find(int fd, struct comp_unit *cu)
+static int go_through_and_find(int fd, struct comp_unit *cu, enum dwarf_tag tag)
 {
     char *tags = cu->tags;
     char *start = cu->start;
@@ -512,7 +512,7 @@ static int go_through_and_find(int fd, struct comp_unit *cu)
 		    abbrev_number);
 	      return 0;
 	    }
-      if (entry->tag != DW_TAG_subprogram)  {
+      if (entry->tag != tag)  {
           for (attr = entry->first_attr; attr; attr = attr->next)
               tags = read_attr (attr->attribute,
                       attr->form,
@@ -767,6 +767,13 @@ int print_dwarf_info(struct comp_unit *tmp, int (*func)(int, struct comp_unit*))
         func(0, tmp);
     }
 }
+int print_dwarf_info_with_tag(struct comp_unit *tmp, int (*func)(int, struct comp_unit*, enum dwarf_tag), enum dwarf_tag tag)
+{
+    if (tmp) {
+        print_dwarf_info_with_tag(tmp->next, func, tag);
+        func(0, tmp, tag);
+    }
+}
 
 int handle_elf(struct argdata *arg)
 {
@@ -775,7 +782,9 @@ int handle_elf(struct argdata *arg)
     } else if (arg->v[1] && ( 0 == strcmp("cu", arg->v[1]))) {
         print_dwarf_info(comp_unit_head, dump_compilation_units);
     } else if (arg->v[1] && ( 0 == strcmp("sub", arg->v[1]))) {
-        print_dwarf_info(comp_unit_head, go_through_and_find);
+        print_dwarf_info_with_tag(comp_unit_head, go_through_and_find, DW_TAG_subprogram);
+    } else if (arg->v[1] && ( 0 == strcmp("cus", arg->v[1]))) {
+        print_dwarf_info_with_tag(comp_unit_head, go_through_and_find, DW_TAG_compile_unit);
     } else if (arg->v[1] == NULL) {
     }
 }
