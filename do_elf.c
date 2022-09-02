@@ -813,6 +813,8 @@ int handle_elf(struct argdata *arg)
         print_dwarf_info_with_tag(comp_unit_head, go_through_and_find, DW_TAG_variable);
     } else if (arg->v[1] && ( 0 == strcmp("struct", arg->v[1]))) {
         print_dwarf_info_with_tag(comp_unit_head, go_through_and_find, DW_TAG_structure_type);
+    } else if (arg->v[1] && ( 0 == strcmp("line", arg->v[1]))) {
+        display_line_info_uma (0);
     } else if (arg->v[1] == NULL) {
     }
 }

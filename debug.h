@@ -54,6 +54,8 @@ void *
 get_data (void *var, int fd, long offset, size_t size, const char *reason);
 elf64_shdr *
 find_section (const char * name);
+int display_line_info_uma (int file);
+
 unsigned char *
 read_and_display_attr (unsigned long attribute,
 		       unsigned long form,

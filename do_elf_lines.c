@@ -5,6 +5,101 @@ extern unsigned long string_table_length;
 extern char *string_table ;
 static unsigned int * debug_line_pointer_sizes = NULL;
 static unsigned int   num_debug_line_pointer_sizes = 0;
+
+extern const char *debug_lines_contents;
+extern size_t debug_lines_size;
+extern const char *debug_info_contents;
+extern size_t debug_info_size;
+
+
+int dummy_printf(const char *format, ...)
+{
+    return 0;
+}
+
+typedef struct line_info
+{
+    char *data;
+    char *end_of_sequence;
+    DWARF2_Internal_LineInfo info;
+    unsigned int pointer_size;
+    char *standard_opcodes;
+    struct line_info *next;
+} lineinfo;
+
+lineinfo *lineinfo_head = NULL;
+lineinfo *current_head = NULL;
+
+static lineinfo *add_node(DWARF2_Internal_LineInfo *node)
+{
+    lineinfo *tmp = (lineinfo*) malloc(sizeof(lineinfo));
+    memset(tmp, 0, sizeof(lineinfo));
+    exit_on_error(tmp == NULL);
+    memcpy(&tmp->info, node, sizeof(DWARF2_Internal_LineInfo));
+    tmp->next = NULL;
+    return tmp;
+}
+
+lineinfo *lineinfo_add(lineinfo *head, DWARF2_Internal_LineInfo *node, char *data, char *end_of_sequence, char *standard_opcodes, unsigned int pointer_size)
+{
+    lineinfo *newnode = add_node(node);
+    newnode->data = data;
+    newnode->end_of_sequence = end_of_sequence;
+    newnode->pointer_size = pointer_size;
+    newnode->standard_opcodes = standard_opcodes;
+
+    if (NULL == head) {
+        return newnode;
+    }else {
+        newnode->next = head;
+        //head = newnode;
+        return newnode;
+    }
+}
+//fix tmp here
+int
+find_file_regs_file (int count)
+{
+    int i;
+    char *data = NULL;
+    lineinfo *tmp = lineinfo_head;
+
+        data = tmp->standard_opcodes + tmp->info.li_opcode_base - 1;
+        if (*data == 0);
+        else
+        {
+            while (*data != 0)
+            {
+                data += strlen ((char *) data) + 1;
+            }
+        }
+
+        data++;
+        if (*data != 0);
+        {
+            while (*data != 0 && count--)
+            {
+                unsigned char *name;
+                int bytes_read;
+
+                //++state_machine_regs.last_file_entry;
+                name = data;
+
+                data += strlen ((char *) data) + 1;
+
+                (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+                data += bytes_read;
+                (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+                data += bytes_read;
+                (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+                data += bytes_read;
+                if (!count)
+                    printf(_("-%s\n"), name);
+            }
+        }
+
+
+}
 typedef struct State_Machine_Registers
 {
   unsigned long address;
@@ -32,13 +127,15 @@ reset_state_machine (int is_stmt)
   state_machine_regs.last_file_entry = 0;
 }
 
-void dump_state_machine(char *name)
+void dump_state_machine(int (*printfptr)(const char *, ...))
 {
-        //printf("%10s 0x%lx [%3d, %3d] %3s %3s\n", name ? name : "null", state_machine_regs.address, state_machine_regs.line, state_machine_regs.column, state_machine_regs.is_stmt ? "NS" : "", state_machine_regs.end_sequence ? "ET" : "");
+        printfptr("0x%lx [%3d, %3d] %3s %3s\n", state_machine_regs.address, state_machine_regs.line, state_machine_regs.column, state_machine_regs.is_stmt ? "NS" : "", state_machine_regs.end_sequence ? "ET" : "");
+        if (state_machine_regs.end_sequence)
+            find_file_regs_file(state_machine_regs.file);
 
 }
 static int
-process_extended_line_op (unsigned char *data, int is_stmt, int pointer_size)
+process_extended_line_op (unsigned char *data, int is_stmt, int pointer_size, int (*printfptr)(const char *, ...))
 {
   unsigned char op_code;
   int bytes_read;
@@ -65,7 +162,7 @@ process_extended_line_op (unsigned char *data, int is_stmt, int pointer_size)
     case DW_LNE_end_sequence:
       PRINTF (_("End of Sequence\n\n"));
       state_machine_regs.end_sequence = 1;
-      dump_state_machine(NULL);
+      dump_state_machine(printfptr);
       reset_state_machine (is_stmt);
       break;
 
@@ -112,9 +209,8 @@ get_debug_line_pointer_sizes (int file)
   if (section == NULL)
     return 0;
 
-  length = section->sh_size;
-  start = get_data (NULL, file, section->sh_offset, section->sh_size,
-		    _("extracting pointer sizes from .debug_info section"));
+  length = debug_info_size;
+  start = (char *)debug_info_contents;
   if (start == NULL)
     return 0;
 
@@ -192,8 +288,8 @@ get_debug_line_pointer_sizes (int file)
   num_debug_line_pointer_sizes = num_units;
   return num_units;
 }
-#if 0
-static char *do_this(char *data, DWARF2_Internal_LineInfo *info)
+#if 1
+static char *process_line_info(char *data, char *end_of_sequence, DWARF2_Internal_LineInfo *info, unsigned int pointer_size, char *standard_opcodes, int (*printfptr)(const char*, ...))
 {
       while (data < end_of_sequence)
 	{
@@ -214,13 +310,13 @@ static char *do_this(char *data, DWARF2_Internal_LineInfo *info)
 	      state_machine_regs.line += adv;
 	      PRINTF (_(" and Line by %d to %d\n"),
 		      adv, state_machine_regs.line);
-          dump_state_machine(NULL);
+          dump_state_machine(printfptr);
 	    }
 	  else switch (op_code)
 	    {
 	    case DW_LNS_extended_op:
 	      data += process_extended_line_op (data, info->li_default_is_stmt,
-						pointer_size);
+						pointer_size, printfptr);
 	      break;
 
 	    case DW_LNS_copy:
@@ -310,11 +406,12 @@ static char *do_this(char *data, DWARF2_Internal_LineInfo *info)
 			    i == 1 ? "" : ", ");
 		    data += bytes_read;
 		  }
-		putchar ('\n');
+      PRINTF ("\n");
 	      }
 	      break;
 	    }
 	}
+      return data;
 }
 #endif
 int
@@ -425,6 +522,8 @@ display_debug_lines (elf64_shdr *section,
       /* Display the contents of the Opcodes table.  */
       standard_opcodes = hdrptr;
 
+      lineinfo_head = lineinfo_add(lineinfo_head, &info, data, end_of_sequence, standard_opcodes, pointer_size);
+
       PRINTF (_("\n Opcodes:\n"));
 
       for (i = 1; i < info.li_opcode_base; i++)
@@ -474,7 +573,7 @@ display_debug_lines (elf64_shdr *section,
 	      data += bytes_read;
 	      PRINTF (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
 	      data += bytes_read;
-	      printf (_("%s\n"), name);
+	      PRINTF (_("%s\n"), name);
 	    }
 	}
 
@@ -484,130 +583,50 @@ display_debug_lines (elf64_shdr *section,
       /* Now display the statements.  */
       PRINTF (_("\n Line Number Statements:\n"));
 
+      data = process_line_info(data, end_of_sequence, &info, pointer_size, standard_opcodes, dummy_printf);
 
-      while (data < end_of_sequence)
-	{
-	  unsigned char op_code;
-	  int adv;
-	  int bytes_read;
-
-	  op_code = *data++;
-
-	  if (op_code >= info.li_opcode_base)
-	    {
-	      op_code -= info.li_opcode_base;
-	      adv      = (op_code / info.li_line_range) * info.li_min_insn_length;
-	      state_machine_regs.address += adv;
-	      PRINTF (_("  Special opcode %d: advance Address by %d to 0x%lx"),
-		      op_code, adv, state_machine_regs.address);
-	      adv = (op_code % info.li_line_range) + info.li_line_base;
-	      state_machine_regs.line += adv;
-	      PRINTF (_(" and Line by %d to %d\n"),
-		      adv, state_machine_regs.line);
-          dump_state_machine(NULL);
-	    }
-	  else switch (op_code)
-	    {
-	    case DW_LNS_extended_op:
-	      data += process_extended_line_op (data, info.li_default_is_stmt,
-						pointer_size);
-	      break;
-
-	    case DW_LNS_copy:
-	      PRINTF (_("  Copy\n"));
-	      break;
-
-	    case DW_LNS_advance_pc:
-	      adv = info.li_min_insn_length * read_leb128 (data, & bytes_read, 0);
-	      data += bytes_read;
-	      state_machine_regs.address += adv;
-	      PRINTF (_("  Advance PC by %d to %lx\n"), adv,
-		      state_machine_regs.address);
-	      break;
-
-	    case DW_LNS_advance_line:
-	      adv = read_leb128 (data, & bytes_read, 1);
-	      data += bytes_read;
-	      state_machine_regs.line += adv;
-	      PRINTF (_("  Advance Line by %d to %d\n"), adv,
-		      state_machine_regs.line);
-	      break;
-
-	    case DW_LNS_set_file:
-	      adv = read_leb128 (data, & bytes_read, 0);
-	      data += bytes_read;
-	      PRINTF (_("  Set File Name to entry %d in the File Name Table\n"),
-		      adv);
-	      state_machine_regs.file = adv;
-	      break;
-
-	    case DW_LNS_set_column:
-	      adv = read_leb128 (data, & bytes_read, 0);
-	      data += bytes_read;
-	      PRINTF (_("  Set column to %d\n"), adv);
-	      state_machine_regs.column = adv;
-	      break;
-
-	    case DW_LNS_negate_stmt:
-	      adv = state_machine_regs.is_stmt;
-	      adv = ! adv;
-	      PRINTF (_("  Set is_stmt to %d\n"), adv);
-	      state_machine_regs.is_stmt = adv;
-	      break;
-
-	    case DW_LNS_set_basic_block:
-	      PRINTF (_("  Set basic block\n"));
-	      state_machine_regs.basic_block = 1;
-	      break;
-
-	    case DW_LNS_const_add_pc:
-	      adv = (((255 - info.li_opcode_base) / info.li_line_range)
-		     * info.li_min_insn_length);
-	      state_machine_regs.address += adv;
-	      PRINTF (_("  Advance PC by constant %d to 0x%lx\n"), adv,
-		      state_machine_regs.address);
-	      break;
-
-	    case DW_LNS_fixed_advance_pc:
-	      adv = byte_get (data, 2);
-	      data += 2;
-	      state_machine_regs.address += adv;
-	      PRINTF (_("  Advance PC by fixed size amount %d to 0x%lx\n"),
-		      adv, state_machine_regs.address);
-	      break;
-
-	    case DW_LNS_set_prologue_end:
-	      PRINTF (_("  Set prologue_end to true\n"));
-	      break;
-
-	    case DW_LNS_set_epilogue_begin:
-	      PRINTF (_("  Set epilogue_begin to true\n"));
-	      break;
-
-	    case DW_LNS_set_isa:
-	      adv = read_leb128 (data, & bytes_read, 0);
-	      data += bytes_read;
-	      PRINTF (_("  Set ISA to %d\n"), adv);
-	      break;
-
-	    default:
-	      PRINTF (_("  Unknown opcode %d with operands: "), op_code);
-	      {
-		int i;
-		for (i = standard_opcodes[op_code - 1]; i > 0 ; --i)
-		  {
-		    PRINTF ("0x%lx%s", read_leb128 (data, &bytes_read, 0),
-			    i == 1 ? "" : ", ");
-		    data += bytes_read;
-		  }
-		putchar ('\n');
-	      }
-	      break;
-	    }
-	}
-      putchar ('\n');
     }
 
   return 1;
 }
 
+
+int
+display_line_info_uma (int file)
+{
+    int i;
+    char *data = NULL;
+    lineinfo *tmp = lineinfo_head;
+
+    for(; tmp ; tmp = tmp->next) {
+
+        data = tmp->standard_opcodes + tmp->info.li_opcode_base - 1;
+
+        while (*data != 0)
+            data += strlen ((char *) data) + 1;
+        data++;
+
+            while (*data != 0)
+            {
+                unsigned char *name;
+                int bytes_read;
+
+                ++state_machine_regs.last_file_entry;
+                name = data;
+
+                data += strlen ((char *) data) + 1;
+
+                (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+                data += bytes_read;
+                (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+                data += bytes_read;
+                (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+                data += bytes_read;
+                (_("%s\n"), name);
+            }
+
+        data++;
+
+        data = process_line_info(data, tmp->end_of_sequence, &tmp->info, tmp->pointer_size, tmp->standard_opcodes, printf);
+    }
+}
