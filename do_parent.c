@@ -57,7 +57,7 @@ void parent(pid_t cpid)
 {
     wait_for_child(cpid);
 
-    sdebug ("parent = %d\n", getpid());
+    debug ("parent = %d\n", getpid());
 
     do_elf_load();
 

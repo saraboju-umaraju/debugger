@@ -3,8 +3,11 @@ CLANG := clang
 RM := /bin/rm -rf
 PRINTF := printf
 ECHO := echo
-CFLAGS += -DCHILD_PROCESS="\"cdb\""
-#CFLAGS += -DCHILD_PROCESS="\"do_me\""
+ifeq ($(UMA), 1)
+  CFLAGS += -DCHILD_PROCESS="\"cdb\""
+else
+  CFLAGS += -DCHILD_PROCESS="\"do_me\""
+endif
 CFLAGS += -gdwarf-2
 CFLAGS += -ggdb3 -rdynamic
 CFLAGS += -Wfatal-errors
