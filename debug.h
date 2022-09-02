@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ptrace.h>
+#include <signal.h>
 #include <fcntl.h>
 #include <elf.h>
 #include <sys/user.h>
@@ -124,7 +125,7 @@ struct cmdlist {
 int handle_enable(struct argdata *data);
 int process_command(char *line, size_t maxsize, struct argdata *arg);
 int handle_disable(struct argdata *data);
-void parent(void);
+void parent(pid_t);
 void child(void);
 int handle_continue(struct argdata *data);
 int handle_break(struct argdata *data);
@@ -134,13 +135,13 @@ int handle_enable(struct argdata *data);
 int handle_quit(struct argdata *data);
 int handle_mem(struct argdata *data);
 int info_break(void);
-uint64_t get_pc(struct argdata *arg);
-uint64_t set_pc(struct argdata *arg, uint64_t pc);
+uint64_t get_pc(pid_t cpid);
+uint64_t set_pc(pid_t cpid, uint64_t pc);
 int cmd_match(struct cmdlist *iter, char *line);
 struct cmdlist *match_cmd(void *data, char *cmd_string);
 int process_command(char *line, size_t maxsize, struct argdata*);
 int initcmdlist(void);
-int wait_for_child(void);
+int wait_for_child(pid_t);
 struct bplist *bp_from_address(uint64_t address);
 int disable_break(unsigned long addr, struct argdata* arg);
 int enable_break(unsigned long addr, struct argdata* arg);

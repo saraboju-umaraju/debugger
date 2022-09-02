@@ -123,33 +123,33 @@ static void dump_registers(struct user_regs_struct *regs)
     }
 }
 
-static int read_registers(struct argdata *data, struct user_regs_struct *regs)
+static int read_registers(pid_t cpid, struct user_regs_struct *regs)
 {
-    int status = ptrace(PTRACE_GETREGS, data->cpid, NULL, regs);
+    int status = ptrace(PTRACE_GETREGS, cpid, NULL, regs);
     exit_on_error(-1 == status);
     return 0;
 }
 
-static int write_registers(struct argdata *data, struct user_regs_struct *regs)
+static int write_registers(pid_t cpid, struct user_regs_struct *regs)
 {
-    int status = ptrace(PTRACE_SETREGS, data->cpid, NULL, regs);
+    int status = ptrace(PTRACE_SETREGS, cpid, NULL, regs);
     exit_on_error(-1 == status);
     return 0;
 }
 
-uint64_t get_pc(struct argdata *arg)
+uint64_t get_pc(pid_t cpid)
 {
     struct user_regs_struct regs = {0};
-    read_registers(arg, &regs);
+    read_registers(cpid, &regs);
     return regs.rip;
 }
 
-uint64_t set_pc(struct argdata *arg, uint64_t pc)
+uint64_t set_pc(pid_t cpid, uint64_t pc)
 {
     struct user_regs_struct regs = {0};
-    read_registers(arg, &regs);
+    read_registers(cpid, &regs);
     regs.rip = pc;
-    write_registers(arg, &regs);
+    write_registers(cpid, &regs);
     return 0;
 }
 
@@ -158,7 +158,7 @@ int handle_register(struct argdata *data)
     struct argdata *arg = (struct argdata*)data;
     sdebug ("%s %s %s \n", arg->v[0], arg->v[1], arg->v[2]);
     struct user_regs_struct regs = {0};
-    read_registers(arg, &regs);
+    read_registers(arg->cpid, &regs);
     struct register_struct *tmp = NULL;
     int index = -1;
 
@@ -176,7 +176,7 @@ int handle_register(struct argdata *data)
         unsigned long int data = strtoul(arg->v[3], NULL, 16);
         sdebug ("0x%lx \n", ((unsigned long*)&regs)[tmp->er]);
         ((unsigned long*)&regs)[tmp->er] = data;
-        write_registers(arg, &regs);
+        write_registers(arg->cpid, &regs);
     }
     return 0;
 }

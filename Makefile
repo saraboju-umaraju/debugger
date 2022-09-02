@@ -29,6 +29,7 @@ SOURCES += do_elf_frame.c
 SOURCES += do_elf_common.c
 SOURCES += do_elf_lines.c
 SOURCES += do_elf_attr.c
+SOURCES += do_signal.c
 ifeq ($(DEBUG), 1)
   ALLOC_FLAGS += -Wl,--wrap=malloc -Wl,--wrap=free -DALLOC_DEBUG
 endif

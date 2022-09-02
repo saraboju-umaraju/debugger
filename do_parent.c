@@ -41,18 +41,6 @@ static struct argdata* usercommand()
     }
 }
 
-int wait_for_child()
-{
-    int status = 0;
-    waitpid(proc, &status, 0);
-    if (WIFEXITED(status)) {
-        debug ("looks like child had terminated normally\n");
-        exit(0);
-    } else if (WSTOPSIG(status)) {
-        sdebug ("child is stopped by a signal = %d\n", WSTOPSIG(status));
-    }
-    return 0;
-}
 
 void free_vector(struct argdata *arg)
 {
@@ -65,9 +53,9 @@ void free_vector(struct argdata *arg)
     }
 }
 
-void parent(void)
+void parent(pid_t cpid)
 {
-    wait_for_child();
+    wait_for_child(cpid);
 
     sdebug ("parent = %d\n", getpid());
 
