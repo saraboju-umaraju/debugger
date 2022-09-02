@@ -2714,10 +2714,10 @@ struct
 }
 debug_displays[] =
 {
-    { ".debug_info",		display_debug_info },
-#if 0
-    { ".debug_abbrev",		display_debug_abbrev },
     { ".debug_line",		display_debug_lines },
+#if 0
+    { ".debug_info",		display_debug_info },
+    { ".debug_abbrev",		display_debug_abbrev },
     { ".debug_aranges",		display_debug_aranges },
     { ".debug_frame",		display_debug_frames },
     { ".debug_pubnames",		display_debug_pubnames },

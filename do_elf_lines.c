@@ -1,4 +1,6 @@
 #include "debug.h"
+#define PRINTF(...) __VA_ARGS__
+//#define PRINTF(...) printf(__VA_ARGS__)
 extern unsigned long string_table_length;
 extern char *string_table ;
 static unsigned int * debug_line_pointer_sizes = NULL;
@@ -29,6 +31,12 @@ reset_state_machine (int is_stmt)
   state_machine_regs.end_sequence = 0;
   state_machine_regs.last_file_entry = 0;
 }
+
+void dump_state_machine(char *name)
+{
+        //printf("%10s 0x%lx [%3d, %3d] %3s %3s\n", name ? name : "null", state_machine_regs.address, state_machine_regs.line, state_machine_regs.column, state_machine_regs.is_stmt ? "NS" : "", state_machine_regs.end_sequence ? "ET" : "");
+
+}
 static int
 process_extended_line_op (unsigned char *data, int is_stmt, int pointer_size)
 {
@@ -50,38 +58,40 @@ process_extended_line_op (unsigned char *data, int is_stmt, int pointer_size)
   len += bytes_read;
   op_code = *data++;
 
-  printf (_("  Extended opcode %d: "), op_code);
+  PRINTF (_("  Extended opcode %d: "), op_code);
 
   switch (op_code)
     {
     case DW_LNE_end_sequence:
-      printf (_("End of Sequence\n\n"));
+      PRINTF (_("End of Sequence\n\n"));
+      state_machine_regs.end_sequence = 1;
+      dump_state_machine(NULL);
       reset_state_machine (is_stmt);
       break;
 
     case DW_LNE_set_address:
       adr = byte_get (data, pointer_size);
-      printf (_("set Address to 0x%lx\n"), adr);
+      PRINTF (_("set Address to 0x%lx\n"), adr);
       state_machine_regs.address = adr;
       break;
 
     case DW_LNE_define_file:
-      printf (_("  define new File Table entry\n"));
-      printf (_("  Entry\tDir\tTime\tSize\tName\n"));
+      PRINTF (_("  define new File Table entry\n"));
+      PRINTF (_("  Entry\tDir\tTime\tSize\tName\n"));
 
-      printf (_("   %d\t"), ++state_machine_regs.last_file_entry);
+      PRINTF (_("   %d\t"), ++state_machine_regs.last_file_entry);
       name = data;
       data += strlen ((char *) data) + 1;
-      printf (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+      PRINTF (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
       data += bytes_read;
-      printf (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+      PRINTF (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
       data += bytes_read;
-      printf (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
-      printf (_("%s\n\n"), name);
+      PRINTF (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+      PRINTF (_("-%s\n\n"), name);
       break;
 
     default:
-      printf (_("UNKNOWN: length %d\n"), len - bytes_read);
+      PRINTF (_("UNKNOWN: length %d\n"), len - bytes_read);
       break;
     }
 
@@ -182,6 +192,131 @@ get_debug_line_pointer_sizes (int file)
   num_debug_line_pointer_sizes = num_units;
   return num_units;
 }
+#if 0
+static char *do_this(char *data, DWARF2_Internal_LineInfo *info)
+{
+      while (data < end_of_sequence)
+	{
+	  unsigned char op_code;
+	  int adv;
+	  int bytes_read;
+
+	  op_code = *data++;
+
+	  if (op_code >= info->li_opcode_base)
+	    {
+	      op_code -= info->li_opcode_base;
+	      adv      = (op_code / info->li_line_range) * info->li_min_insn_length;
+	      state_machine_regs.address += adv;
+	      PRINTF (_("  Special opcode %d: advance Address by %d to 0x%lx"),
+		      op_code, adv, state_machine_regs.address);
+	      adv = (op_code % info->li_line_range) + info->li_line_base;
+	      state_machine_regs.line += adv;
+	      PRINTF (_(" and Line by %d to %d\n"),
+		      adv, state_machine_regs.line);
+          dump_state_machine(NULL);
+	    }
+	  else switch (op_code)
+	    {
+	    case DW_LNS_extended_op:
+	      data += process_extended_line_op (data, info->li_default_is_stmt,
+						pointer_size);
+	      break;
+
+	    case DW_LNS_copy:
+	      PRINTF (_("  Copy\n"));
+	      break;
+
+	    case DW_LNS_advance_pc:
+	      adv = info->li_min_insn_length * read_leb128 (data, & bytes_read, 0);
+	      data += bytes_read;
+	      state_machine_regs.address += adv;
+	      PRINTF (_("  Advance PC by %d to %lx\n"), adv,
+		      state_machine_regs.address);
+	      break;
+
+	    case DW_LNS_advance_line:
+	      adv = read_leb128 (data, & bytes_read, 1);
+	      data += bytes_read;
+	      state_machine_regs.line += adv;
+	      PRINTF (_("  Advance Line by %d to %d\n"), adv,
+		      state_machine_regs.line);
+	      break;
+
+	    case DW_LNS_set_file:
+	      adv = read_leb128 (data, & bytes_read, 0);
+	      data += bytes_read;
+	      PRINTF (_("  Set File Name to entry %d in the File Name Table\n"),
+		      adv);
+	      state_machine_regs.file = adv;
+	      break;
+
+	    case DW_LNS_set_column:
+	      adv = read_leb128 (data, & bytes_read, 0);
+	      data += bytes_read;
+	      PRINTF (_("  Set column to %d\n"), adv);
+	      state_machine_regs.column = adv;
+	      break;
+
+	    case DW_LNS_negate_stmt:
+	      adv = state_machine_regs.is_stmt;
+	      adv = ! adv;
+	      PRINTF (_("  Set is_stmt to %d\n"), adv);
+	      state_machine_regs.is_stmt = adv;
+	      break;
+
+	    case DW_LNS_set_basic_block:
+	      PRINTF (_("  Set basic block\n"));
+	      state_machine_regs.basic_block = 1;
+	      break;
+
+	    case DW_LNS_const_add_pc:
+	      adv = (((255 - info->li_opcode_base) / info->li_line_range)
+		     * info->li_min_insn_length);
+	      state_machine_regs.address += adv;
+	      PRINTF (_("  Advance PC by constant %d to 0x%lx\n"), adv,
+		      state_machine_regs.address);
+	      break;
+
+	    case DW_LNS_fixed_advance_pc:
+	      adv = byte_get (data, 2);
+	      data += 2;
+	      state_machine_regs.address += adv;
+	      PRINTF (_("  Advance PC by fixed size amount %d to 0x%lx\n"),
+		      adv, state_machine_regs.address);
+	      break;
+
+	    case DW_LNS_set_prologue_end:
+	      PRINTF (_("  Set prologue_end to true\n"));
+	      break;
+
+	    case DW_LNS_set_epilogue_begin:
+	      PRINTF (_("  Set epilogue_begin to true\n"));
+	      break;
+
+	    case DW_LNS_set_isa:
+	      adv = read_leb128 (data, & bytes_read, 0);
+	      data += bytes_read;
+	      PRINTF (_("  Set ISA to %d\n"), adv);
+	      break;
+
+	    default:
+	      PRINTF (_("  Unknown opcode %d with operands: "), op_code);
+	      {
+		int i;
+		for (i = standard_opcodes[op_code - 1]; i > 0 ; --i)
+		  {
+		    PRINTF ("0x%lx%s", read_leb128 (data, &bytes_read, 0),
+			    i == 1 ? "" : ", ");
+		    data += bytes_read;
+		  }
+		putchar ('\n');
+	      }
+	      break;
+	    }
+	}
+}
+#endif
 int
 display_debug_lines (elf64_shdr *section,
 		     unsigned char *start, int file)
@@ -197,7 +332,7 @@ display_debug_lines (elf64_shdr *section,
   int initial_length_size;
   unsigned int comp_unit = 0;
 
-  printf (_("\nDump of debug contents of section %s:\n\n"),
+  PRINTF (_("\nDump of debug contents of section %s:\n\n"),
 	  SECTION_NAME (section));
 
   if (num_debug_line_pointer_sizes == 0)
@@ -273,15 +408,15 @@ display_debug_lines (elf64_shdr *section,
 	  comp_unit ++;
 	}
 
-      printf (_("  Length:                      %ld\n"), info.li_length);
-      printf (_("  DWARF Version:               %d\n"), info.li_version);
-      printf (_("  Prologue Length:             %d\n"), info.li_prologue_length);
-      printf (_("  Minimum Instruction Length:  %d\n"), info.li_min_insn_length);
-      printf (_("  Initial value of 'is_stmt':  %d\n"), info.li_default_is_stmt);
-      printf (_("  Line Base:                   %d\n"), info.li_line_base);
-      printf (_("  Line Range:                  %d\n"), info.li_line_range);
-      printf (_("  Opcode Base:                 %d\n"), info.li_opcode_base);
-      printf (_("  (Pointer size:               %u)\n"), pointer_size);
+      PRINTF (_("  Length:                      %ld\n"), info.li_length);
+      PRINTF (_("  DWARF Version:               %d\n"), info.li_version);
+      PRINTF (_("  Prologue Length:             %d\n"), info.li_prologue_length);
+      PRINTF (_("  Minimum Instruction Length:  %d\n"), info.li_min_insn_length);
+      PRINTF (_("  Initial value of 'is_stmt':  %d\n"), info.li_default_is_stmt);
+      PRINTF (_("  Line Base:                   %d\n"), info.li_line_base);
+      PRINTF (_("  Line Range:                  %d\n"), info.li_line_range);
+      PRINTF (_("  Opcode Base:                 %d\n"), info.li_opcode_base);
+      PRINTF (_("  (Pointer size:               %u)\n"), pointer_size);
 
       end_of_sequence = data + info.li_length + initial_length_size;
 
@@ -290,23 +425,23 @@ display_debug_lines (elf64_shdr *section,
       /* Display the contents of the Opcodes table.  */
       standard_opcodes = hdrptr;
 
-      printf (_("\n Opcodes:\n"));
+      PRINTF (_("\n Opcodes:\n"));
 
       for (i = 1; i < info.li_opcode_base; i++)
-	printf (_("  Opcode %d has %d args\n"), i, standard_opcodes[i - 1]);
+	PRINTF (_("  Opcode %d has %d args\n"), i, standard_opcodes[i - 1]);
 
       /* Display the contents of the Directory table.  */
       data = standard_opcodes + info.li_opcode_base - 1;
 
       if (*data == 0)
-	printf (_("\n The Directory Table is empty.\n"));
+	PRINTF (_("\n The Directory Table is empty.\n"));
       else
 	{
-	  printf (_("\n The Directory Table:\n"));
+	  PRINTF (_("\n The Directory Table:\n"));
 
 	  while (*data != 0)
 	    {
-	      printf (_("  %s\n"), data);
+	      PRINTF (_("  %s\n"), data);
 
 	      data += strlen ((char *) data) + 1;
 	    }
@@ -317,27 +452,27 @@ display_debug_lines (elf64_shdr *section,
 
       /* Display the contents of the File Name table.  */
       if (*data == 0)
-	printf (_("\n The File Name Table is empty.\n"));
+	PRINTF (_("\n The File Name Table is empty.\n"));
       else
 	{
-	  printf (_("\n The File Name Table:\n"));
-	  printf (_("  Entry\tDir\tTime\tSize\tName\n"));
+	  PRINTF (_("\n The File Name Table:\n"));
+	  PRINTF (_("  Entry\tDir\tTime\tSize\tName\n"));
 
 	  while (*data != 0)
 	    {
-	      unsigned char *name;
+            unsigned char *name;
 	      int bytes_read;
 
-	      printf (_("  %d\t"), ++state_machine_regs.last_file_entry);
+	      PRINTF (_("  %d\t"), ++state_machine_regs.last_file_entry);
 	      name = data;
 
 	      data += strlen ((char *) data) + 1;
 
-	      printf (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+	      PRINTF (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
 	      data += bytes_read;
-	      printf (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+	      PRINTF (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
 	      data += bytes_read;
-	      printf (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
+	      PRINTF (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
 	      data += bytes_read;
 	      printf (_("%s\n"), name);
 	    }
@@ -347,7 +482,7 @@ display_debug_lines (elf64_shdr *section,
       data++;
 
       /* Now display the statements.  */
-      printf (_("\n Line Number Statements:\n"));
+      PRINTF (_("\n Line Number Statements:\n"));
 
 
       while (data < end_of_sequence)
@@ -363,12 +498,13 @@ display_debug_lines (elf64_shdr *section,
 	      op_code -= info.li_opcode_base;
 	      adv      = (op_code / info.li_line_range) * info.li_min_insn_length;
 	      state_machine_regs.address += adv;
-	      printf (_("  Special opcode %d: advance Address by %d to 0x%lx"),
+	      PRINTF (_("  Special opcode %d: advance Address by %d to 0x%lx"),
 		      op_code, adv, state_machine_regs.address);
 	      adv = (op_code % info.li_line_range) + info.li_line_base;
 	      state_machine_regs.line += adv;
-	      printf (_(" and Line by %d to %d\n"),
+	      PRINTF (_(" and Line by %d to %d\n"),
 		      adv, state_machine_regs.line);
+          dump_state_machine(NULL);
 	    }
 	  else switch (op_code)
 	    {
@@ -378,14 +514,14 @@ display_debug_lines (elf64_shdr *section,
 	      break;
 
 	    case DW_LNS_copy:
-	      printf (_("  Copy\n"));
+	      PRINTF (_("  Copy\n"));
 	      break;
 
 	    case DW_LNS_advance_pc:
 	      adv = info.li_min_insn_length * read_leb128 (data, & bytes_read, 0);
 	      data += bytes_read;
 	      state_machine_regs.address += adv;
-	      printf (_("  Advance PC by %d to %lx\n"), adv,
+	      PRINTF (_("  Advance PC by %d to %lx\n"), adv,
 		      state_machine_regs.address);
 	      break;
 
@@ -393,14 +529,14 @@ display_debug_lines (elf64_shdr *section,
 	      adv = read_leb128 (data, & bytes_read, 1);
 	      data += bytes_read;
 	      state_machine_regs.line += adv;
-	      printf (_("  Advance Line by %d to %d\n"), adv,
+	      PRINTF (_("  Advance Line by %d to %d\n"), adv,
 		      state_machine_regs.line);
 	      break;
 
 	    case DW_LNS_set_file:
 	      adv = read_leb128 (data, & bytes_read, 0);
 	      data += bytes_read;
-	      printf (_("  Set File Name to entry %d in the File Name Table\n"),
+	      PRINTF (_("  Set File Name to entry %d in the File Name Table\n"),
 		      adv);
 	      state_machine_regs.file = adv;
 	      break;
@@ -408,19 +544,19 @@ display_debug_lines (elf64_shdr *section,
 	    case DW_LNS_set_column:
 	      adv = read_leb128 (data, & bytes_read, 0);
 	      data += bytes_read;
-	      printf (_("  Set column to %d\n"), adv);
+	      PRINTF (_("  Set column to %d\n"), adv);
 	      state_machine_regs.column = adv;
 	      break;
 
 	    case DW_LNS_negate_stmt:
 	      adv = state_machine_regs.is_stmt;
 	      adv = ! adv;
-	      printf (_("  Set is_stmt to %d\n"), adv);
+	      PRINTF (_("  Set is_stmt to %d\n"), adv);
 	      state_machine_regs.is_stmt = adv;
 	      break;
 
 	    case DW_LNS_set_basic_block:
-	      printf (_("  Set basic block\n"));
+	      PRINTF (_("  Set basic block\n"));
 	      state_machine_regs.basic_block = 1;
 	      break;
 
@@ -428,7 +564,7 @@ display_debug_lines (elf64_shdr *section,
 	      adv = (((255 - info.li_opcode_base) / info.li_line_range)
 		     * info.li_min_insn_length);
 	      state_machine_regs.address += adv;
-	      printf (_("  Advance PC by constant %d to 0x%lx\n"), adv,
+	      PRINTF (_("  Advance PC by constant %d to 0x%lx\n"), adv,
 		      state_machine_regs.address);
 	      break;
 
@@ -436,31 +572,31 @@ display_debug_lines (elf64_shdr *section,
 	      adv = byte_get (data, 2);
 	      data += 2;
 	      state_machine_regs.address += adv;
-	      printf (_("  Advance PC by fixed size amount %d to 0x%lx\n"),
+	      PRINTF (_("  Advance PC by fixed size amount %d to 0x%lx\n"),
 		      adv, state_machine_regs.address);
 	      break;
 
 	    case DW_LNS_set_prologue_end:
-	      printf (_("  Set prologue_end to true\n"));
+	      PRINTF (_("  Set prologue_end to true\n"));
 	      break;
 
 	    case DW_LNS_set_epilogue_begin:
-	      printf (_("  Set epilogue_begin to true\n"));
+	      PRINTF (_("  Set epilogue_begin to true\n"));
 	      break;
 
 	    case DW_LNS_set_isa:
 	      adv = read_leb128 (data, & bytes_read, 0);
 	      data += bytes_read;
-	      printf (_("  Set ISA to %d\n"), adv);
+	      PRINTF (_("  Set ISA to %d\n"), adv);
 	      break;
 
 	    default:
-	      printf (_("  Unknown opcode %d with operands: "), op_code);
+	      PRINTF (_("  Unknown opcode %d with operands: "), op_code);
 	      {
 		int i;
 		for (i = standard_opcodes[op_code - 1]; i > 0 ; --i)
 		  {
-		    printf ("0x%lx%s", read_leb128 (data, &bytes_read, 0),
+		    PRINTF ("0x%lx%s", read_leb128 (data, &bytes_read, 0),
 			    i == 1 ? "" : ", ");
 		    data += bytes_read;
 		  }

@@ -92,6 +92,8 @@ const char *debug_abbrev_contents;
 size_t debug_abbrev_size;
 const char *debug_info_contents;
 size_t debug_info_size;
+const char *debug_lines_contents;
+size_t debug_lines_size;
 elf64_ehdr *elf_header = NULL;
 elf64_shdr *section_headers = NULL;
 elf64_shdr *string_table_header = NULL;
@@ -292,6 +294,28 @@ load_debug_info (int fd)
 				 _("debug_loc section data"));
 }
 
+static void
+load_debug_lines (int fd)
+{
+  elf64_shdr *sec;
+
+  /* If it is already loaded, do nothing.  */
+  if (debug_lines_contents != NULL)
+    return;
+
+  /* Locate the .debug_loc section.  */
+  sec = find_section (".debug_line");
+  if (sec == NULL)
+    return;
+
+  debug_lines_size = sec->sh_size;
+
+  debug_lines_contents = get_data (NULL, fd, sec->sh_offset, sec->sh_size,
+				 _("debug_loc section data"));
+  display_debug_lines (sec, (char *)debug_lines_contents, fd);
+
+}
+
 
 static void
 load_debug_str (int fd)
@@ -448,9 +472,9 @@ struct
 debug_displays[] =
 {
     { ".debug_line",		display_debug_lines },
+#if 0
     { ".debug_aranges",		display_debug_aranges },
     { ".debug_frame",		display_debug_frames },
-#if 0
     { ".debug_info",		display_debug_info },
     { ".debug_abbrev",		display_debug_abbrev },
     { ".debug_pubnames",		display_debug_pubnames },
@@ -813,6 +837,7 @@ int do_elf_load ()
     load_required_sections();
     process_debug_info(0);
     //dump_section_headers(fd);
+    load_debug_lines(fd);
 
     return 0;
 }
