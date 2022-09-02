@@ -42,7 +42,7 @@ OBJECTS := $(patsubst %.c, %.o, $(SOURCES))
 cdb : $(OBJECTS) do_me 
 	@$(CC) $(CFLAGS) -o $@ $(OBJECTS)
 	@$(PRINTF) 'LINK %-10s\n' "$@"
-	#@./cdb
+	@./cdb
 clean :
 	@$(RM) $(OBJECTS) cdb do_me do_me.o dwarf dwarf.o for-dwarf for-dwarf.o do_me_helper.o
 

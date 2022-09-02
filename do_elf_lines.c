@@ -205,16 +205,12 @@ get_debug_line_pointer_sizes (int file)
   unsigned int        num_units;
   unsigned int        unit;
 
-  section = find_section (".debug_info");
-  if (section == NULL)
-    return 0;
-
   length = debug_info_size;
   start = (char *)debug_info_contents;
   if (start == NULL)
     return 0;
 
-  end = start + section->sh_size;
+  end = start + debug_info_size;
   /* First scan the section to get the number of comp units.  */
   for (begin = start, num_units = 0; begin < end; num_units++)
     {
@@ -284,7 +280,7 @@ get_debug_line_pointer_sizes (int file)
 	}
     }
 
-  free (start);
+  //free (start);
   num_debug_line_pointer_sizes = num_units;
   return num_units;
 }
