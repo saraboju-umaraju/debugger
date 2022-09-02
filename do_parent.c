@@ -3,7 +3,7 @@
 extern struct cmdlist *commands ;
 extern pid_t proc ;
 
-static int do_run_cmd(struct argdata *arg)
+int do_run_cmd(struct argdata *arg)
 {
     struct cmdlist *tmp = match_cmd(arg, arg->v[0]);
     if (NULL == tmp) {

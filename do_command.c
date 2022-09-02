@@ -45,5 +45,7 @@ int initcmdlist(void)
     commands = cmd_add(commands, "memory", &handle_mem, NULL);
     commands = cmd_add(commands, "help", &handle_help, NULL);
     commands = cmd_add(commands, "elf", &handle_elf, NULL);
+    commands = cmd_add(commands, "step", &handle_step, NULL);
+    commands = cmd_add(commands, "loop", &handle_loop, NULL);
     return 0;
 }

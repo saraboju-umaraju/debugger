@@ -12,6 +12,15 @@ int handle_help(struct argdata *arg)
     }
     return 0;
 }
+int handle_loop(struct argdata *arg)
+{
+    int i = strtoul(arg->v[2], NULL, 10);
+    memcpy(arg->v[0], arg->v[1], 16);
+    for(; i--;) {
+        do_run_cmd(arg);
+    }
+
+}
 
 
 struct cmdlist *match_cmd(void *data, char *cmd_string)

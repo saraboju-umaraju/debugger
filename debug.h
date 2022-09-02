@@ -123,7 +123,10 @@ struct cmdlist {
     int (*help)(void);
     struct cmdlist *next;
 };
+int handle_loop(struct argdata *arg);
+int handle_step(struct argdata *arg);
 
+int do_run_cmd(struct argdata *arg);
 int handle_enable(struct argdata *data);
 int process_command(char *line, size_t maxsize, struct argdata *arg);
 int handle_disable(struct argdata *data);
