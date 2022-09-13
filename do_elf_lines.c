@@ -28,7 +28,7 @@ static SMR state_machine_regs;
 typedef struct smr_st
 {
     SMR state_machine_regs;
-    SMR *next;
+    struct smr_st *next;
 }smr;
 
 
@@ -46,6 +46,7 @@ typedef struct line_info
     char *standard_opcodes;
     struct line_info *next;
     smr *linelist;
+    char file_path[32];
 } lineinfo;
 
 lineinfo *lineinfo_head = NULL;
@@ -59,6 +60,28 @@ static lineinfo *add_node(DWARF2_Internal_LineInfo *node)
     memcpy(&tmp->info, node, sizeof(DWARF2_Internal_LineInfo));
     tmp->next = NULL;
     return tmp;
+}
+
+static smr *add_node_smr(SMR *state_machine_regs)
+{
+    smr *tmp = (smr*) malloc(sizeof(smr));
+    memset(tmp, 0, sizeof(smr));
+    exit_on_error(tmp == NULL);
+    memcpy(&tmp->state_machine_regs, state_machine_regs, sizeof(SMR));
+    tmp->next = NULL;
+    return tmp;
+}
+smr *smr_add(lineinfo *tmp, SMR *state_machine_regs)
+{
+    smr *newnode = add_node_smr(state_machine_regs);
+
+    if (NULL == tmp->linelist) {
+        tmp->linelist = newnode;
+    }else {
+        newnode->next = tmp->linelist;
+        //head = newnode;
+        tmp->linelist = newnode;
+    }
 }
 
 lineinfo *lineinfo_add(lineinfo *head, DWARF2_Internal_LineInfo *node, char *data, char *end_of_sequence, char *standard_opcodes, unsigned int pointer_size)
@@ -133,13 +156,41 @@ reset_state_machine (int is_stmt)
   state_machine_regs.last_file_entry = 0;
 }
 
+void add_to_line_info(lineinfo *tmp, SMR *state_machine_regs)
+{
+    smr_add(tmp, state_machine_regs);
+}
+
 void dump_state_machine(lineinfo *tmp, int (*printfptr)(const char *, ...))
 {
-    
-        printfptr("0x%lx [%3d, %3d] %3s %3s\n", state_machine_regs.address, state_machine_regs.line, state_machine_regs.column, state_machine_regs.is_stmt ? "NS" : "", state_machine_regs.end_sequence ? "ET" : "");
-        if (tmp && state_machine_regs.end_sequence)
-            find_file_regs_file(tmp, state_machine_regs.file);
+    if (tmp)
+        add_to_line_info(tmp, &state_machine_regs);
+    //printfptr("0x%lx [%3d, %3d] %3s %3s\n", state_machine_regs.address, state_machine_regs.line, state_machine_regs.column, state_machine_regs.is_stmt ? "NS" : "", state_machine_regs.end_sequence ? "ET" : "");
+    if (tmp && state_machine_regs.end_sequence)
+        strncpy(tmp->file_path, find_file_regs_file(tmp, state_machine_regs.file), 32);
 
+}
+void dump_lines_pc(unsigned long pc, lineinfo *tmp)
+{
+    smr *tm = NULL;
+    if (tmp) {
+        for(tm = tmp->linelist; tm ; tm = tm->next) {
+            if (pc == tm->state_machine_regs.address) {
+                printf("file : %s\n", tmp->file_path);
+                printf("0x%lx [%3d, %3d] %3s %3s\n", tm->state_machine_regs.address, tm->state_machine_regs.line, tm->state_machine_regs.column, tm->state_machine_regs.is_stmt ? "NS" : "", tm->state_machine_regs.end_sequence ? "ET" : "");
+            }
+        }
+    }
+}
+void dump_lines(lineinfo *tmp)
+{
+    smr *tm = NULL;
+    if (tmp) {
+            printf("file : %s\n", tmp->file_path);
+        for(tm = tmp->linelist; tm ; tm = tm->next) {
+            printf("0x%lx [%3d, %3d] %3s %3s\n", tm->state_machine_regs.address, tm->state_machine_regs.line, tm->state_machine_regs.column, tm->state_machine_regs.is_stmt ? "NS" : "", tm->state_machine_regs.end_sequence ? "ET" : "");
+        }
+    }
 }
 static int
 process_extended_line_op (lineinfo *tmp, unsigned char *data, int is_stmt, int pointer_size, int (*printfptr)(const char *, ...))
@@ -766,4 +817,30 @@ int
 display_line_info_uma (int file)
 {
     store_line_info();
+}
+int
+store_line_info_2 ()
+{
+    int i;
+    char *data = NULL;
+    lineinfo *tmp = lineinfo_head;
+
+    for(; tmp ; tmp = tmp->next) {
+        dump_lines(tmp);
+
+    }
+}
+int
+display_line_info_uma_2 (int file)
+{
+    store_line_info_2();
+}
+void try_display_line_info(unsigned long could_be_bp)
+{
+    lineinfo *tmp = lineinfo_head;
+
+    for(; tmp ; tmp = tmp->next) {
+        dump_lines_pc(could_be_bp, tmp);
+
+    }
 }

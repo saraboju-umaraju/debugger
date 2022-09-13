@@ -1075,7 +1075,7 @@ int handle_elf(struct argdata *arg)
     } else if (arg->v[1] && ( 0 == strcmp("struct", arg->v[1]))) {
         print_dwarf_info_with_tag(comp_unit_head, go_through_and_find, DW_TAG_structure_type);
     } else if (arg->v[1] && ( 0 == strcmp("line", arg->v[1]))) {
-        display_line_info_uma (0);
+    display_line_info_uma_2 (0);
     } else if (arg->v[1] == NULL) {
         print_dwarf_info_with_tag(comp_unit_head, oops, DW_TAG_subprogram);
     }
@@ -1103,7 +1103,8 @@ int do_elf_load ()
     //dump_section_headers(fd);
     load_debug_lines(fd);
     print_dwarf_info(comp_unit_head, oops_2);
-    print_dwarf_info(comp_unit_head, oops_3);
+    //print_dwarf_info(comp_unit_head, oops_3);
+    display_line_info_uma (0);
 
     return 0;
 }
