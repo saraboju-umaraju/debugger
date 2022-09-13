@@ -25,6 +25,6 @@ void child()
     int status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
     exit_on_error(-1 == status);
     char *argv[] = {"./", CHILD_PROCESS, NULL};
-    execvp("./do_me", argv);
+    execvp("./" CHILD_PROCESS, argv);
     printf (" __UMA__ %s %s %d %s\n",__FILE__,__func__,__LINE__, CHILD_PROCESS);
 }

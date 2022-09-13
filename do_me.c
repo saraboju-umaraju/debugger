@@ -2,6 +2,8 @@
 
 extern int call_function();
 
+int global_variable = 0xdeadbeef;
+
 int main (int argc, char *argv[])
 {
     printf ("Hello, I am ALIVE ;)\n");

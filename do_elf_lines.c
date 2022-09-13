@@ -170,14 +170,35 @@ void dump_state_machine(lineinfo *tmp, int (*printfptr)(const char *, ...))
         strncpy(tmp->file_path, find_file_regs_file(tmp, state_machine_regs.file), 32);
 
 }
+void show_actual_line(char *file, unsigned int linenum, unsigned int col)
+{
+    FILE *fp;
+    char c;
+
+    fp = fopen(file, "r");
+    exit_on_error (fp == NULL);
+
+    char line[256] = {};
+    int i = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        i++;
+        if(i == linenum)
+        {
+            printf("%s", line);
+        }
+    }
+    fclose(fp);
+    return ;
+}
 void dump_lines_pc(unsigned long pc, lineinfo *tmp)
 {
     smr *tm = NULL;
     if (tmp) {
         for(tm = tmp->linelist; tm ; tm = tm->next) {
             if (pc == tm->state_machine_regs.address) {
-                printf("file : %s\n", tmp->file_path);
-                printf("0x%lx [%3d, %3d] %3s %3s\n", tm->state_machine_regs.address, tm->state_machine_regs.line, tm->state_machine_regs.column, tm->state_machine_regs.is_stmt ? "NS" : "", tm->state_machine_regs.end_sequence ? "ET" : "");
+                printf("breakpoint in file : %s\n", tmp->file_path);
+                //printf("0x%lx [%3d, %3d] %3s %3s\n", tm->state_machine_regs.address, tm->state_machine_regs.line, tm->state_machine_regs.column, tm->state_machine_regs.is_stmt ? "NS" : "", tm->state_machine_regs.end_sequence ? "ET" : "");
+                show_actual_line(tmp->file_path, tm->state_machine_regs.line, tm->state_machine_regs.column);
             }
         }
     }

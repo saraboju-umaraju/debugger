@@ -17,6 +17,7 @@
 #define sdebug(...)
 #define exit_on_error(cond) \
     if (cond) { \
+        perror("");\
         debug ("exiting on error %s %s %d\n", __FILE__, __func__, __LINE__);\
         exit(1);\
     }
