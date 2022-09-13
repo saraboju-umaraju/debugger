@@ -36,6 +36,7 @@ typedef struct abbrev_attr
 {
     unsigned long attribute;
     unsigned long form;
+    unsigned char *saved_addr;
     struct abbrev_attr *next;
 }
 abbrev_attr;

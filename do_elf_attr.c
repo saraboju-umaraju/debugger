@@ -6,7 +6,8 @@ read_attr_value (unsigned long attribute,
 			     unsigned long cu_offset,
 			     unsigned long pointer_size,
 			     unsigned long offset_size,
-			     int dwarf_version)
+			     int dwarf_version,
+                 struct attr_data *ptr)
 {
   unsigned long uvalue = 0;
   unsigned char *block_start = NULL;
@@ -36,11 +37,14 @@ read_attr_value (unsigned long attribute,
 
     case DW_FORM_addr:
       uvalue = byte_get (data, pointer_size);
+      ptr->uvalue = uvalue;
       data += pointer_size;
       break;
 
     case DW_FORM_strp:
       uvalue = byte_get (data, offset_size);
+      ptr->uvalue = uvalue;
+      ptr->indirect = 1;
       data += offset_size;
       break;
 
@@ -48,37 +52,43 @@ read_attr_value (unsigned long attribute,
     case DW_FORM_flag:
     case DW_FORM_data1:
       uvalue = byte_get (data++, 1);
+      ptr->uvalue = uvalue;
       break;
 
     case DW_FORM_ref2:
     case DW_FORM_data2:
       uvalue = byte_get (data, 2);
+      ptr->uvalue = uvalue;
       data += 2;
       break;
 
     case DW_FORM_ref4:
     case DW_FORM_data4:
       uvalue = byte_get (data, 4);
+      ptr->uvalue = uvalue;
       data += 4;
       break;
 
     case DW_FORM_sdata:
       uvalue = read_leb128 (data, & bytes_read, 1);
+      ptr->uvalue = uvalue;
       data += bytes_read;
       break;
 
     case DW_FORM_ref_udata:
     case DW_FORM_udata:
       uvalue = read_leb128 (data, & bytes_read, 0);
+      ptr->uvalue = uvalue;
       data += bytes_read;
       break;
 
     case DW_FORM_indirect:
       form = read_leb128 (data, & bytes_read, 0);
       data += bytes_read;
+      ptr->indirect = 1;
       return read_attr_value (attribute, form, data, cu_offset,
 					  pointer_size, offset_size,
-					  dwarf_version);
+					  dwarf_version, ptr);
     }
 
   switch (form)
@@ -106,6 +116,7 @@ read_attr_value (unsigned long attribute,
     case DW_FORM_ref8:
     case DW_FORM_data8:
       uvalue = byte_get (data, 4);
+      ptr->uvalue = uvalue;
       byte_get (data + 4, 4);
       data += 8;
       break;
@@ -116,24 +127,28 @@ read_attr_value (unsigned long attribute,
 
     case DW_FORM_block:
       uvalue = read_leb128 (data, & bytes_read, 0);
+      ptr->uvalue = uvalue;
       block_start = data + bytes_read;
       data = (block_start + uvalue);
       break;
 
     case DW_FORM_block1:
       uvalue = byte_get (data, 1);
+      ptr->uvalue = uvalue;
       block_start = data + 1;
       data = (block_start + uvalue);
       break;
 
     case DW_FORM_block2:
       uvalue = byte_get (data, 2);
+      ptr->uvalue = uvalue;
       block_start = data + 2;
       data = (block_start + uvalue);
       break;
 
     case DW_FORM_block4:
       uvalue = byte_get (data, 4);
+      ptr->uvalue = uvalue;
       block_start = data + 4;
       data = (block_start + uvalue);
       break;
@@ -514,10 +529,11 @@ read_attr (unsigned long attribute,
 		       unsigned long cu_offset,
 		       unsigned long pointer_size,
 		       unsigned long offset_size,
-		       int dwarf_version)
+		       int dwarf_version,
+               struct attr_data *ptr)
 {
   data = read_attr_value (attribute, form, data, cu_offset,
-				      pointer_size, offset_size, dwarf_version);
+				      pointer_size, offset_size, dwarf_version, ptr);
   return data;
 }
 

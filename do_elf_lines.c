@@ -10,6 +10,26 @@ extern const char *debug_lines_contents;
 extern size_t debug_lines_size;
 extern const char *debug_info_contents;
 extern size_t debug_info_size;
+typedef struct State_Machine_Registers
+{
+  unsigned long address;
+  unsigned int file;
+  unsigned int line;
+  unsigned int column;
+  int is_stmt;
+  int basic_block;
+  int end_sequence;
+/* This variable hold the number of the last entry seen
+   in the File Table.  */
+  unsigned int last_file_entry;
+} SMR;
+static SMR state_machine_regs;
+
+typedef struct smr_st
+{
+    SMR state_machine_regs;
+    SMR *next;
+}smr;
 
 
 int dummy_printf(const char *format, ...)
@@ -25,6 +45,7 @@ typedef struct line_info
     unsigned int pointer_size;
     char *standard_opcodes;
     struct line_info *next;
+    smr *linelist;
 } lineinfo;
 
 lineinfo *lineinfo_head = NULL;
@@ -57,12 +78,11 @@ lineinfo *lineinfo_add(lineinfo *head, DWARF2_Internal_LineInfo *node, char *dat
     }
 }
 //fix tmp here
-int
-find_file_regs_file (int count)
+char *
+find_file_regs_file (lineinfo *tmp, int count)
 {
     int i;
     char *data = NULL;
-    lineinfo *tmp = lineinfo_head;
 
         data = tmp->standard_opcodes + tmp->info.li_opcode_base - 1;
         if (*data == 0);
@@ -94,26 +114,12 @@ find_file_regs_file (int count)
                 (_("%lu\t"), read_leb128 (data, & bytes_read, 0));
                 data += bytes_read;
                 if (!count)
-                    printf(_("-%s\n"), name);
+                    return name;
             }
         }
 
 
 }
-typedef struct State_Machine_Registers
-{
-  unsigned long address;
-  unsigned int file;
-  unsigned int line;
-  unsigned int column;
-  int is_stmt;
-  int basic_block;
-  int end_sequence;
-/* This variable hold the number of the last entry seen
-   in the File Table.  */
-  unsigned int last_file_entry;
-} SMR;
-static SMR state_machine_regs;
 static void
 reset_state_machine (int is_stmt)
 {
@@ -127,15 +133,16 @@ reset_state_machine (int is_stmt)
   state_machine_regs.last_file_entry = 0;
 }
 
-void dump_state_machine(int (*printfptr)(const char *, ...))
+void dump_state_machine(lineinfo *tmp, int (*printfptr)(const char *, ...))
 {
+    
         printfptr("0x%lx [%3d, %3d] %3s %3s\n", state_machine_regs.address, state_machine_regs.line, state_machine_regs.column, state_machine_regs.is_stmt ? "NS" : "", state_machine_regs.end_sequence ? "ET" : "");
-        if (state_machine_regs.end_sequence)
-            find_file_regs_file(state_machine_regs.file);
+        if (tmp && state_machine_regs.end_sequence)
+            find_file_regs_file(tmp, state_machine_regs.file);
 
 }
 static int
-process_extended_line_op (unsigned char *data, int is_stmt, int pointer_size, int (*printfptr)(const char *, ...))
+process_extended_line_op (lineinfo *tmp, unsigned char *data, int is_stmt, int pointer_size, int (*printfptr)(const char *, ...))
 {
   unsigned char op_code;
   int bytes_read;
@@ -162,7 +169,7 @@ process_extended_line_op (unsigned char *data, int is_stmt, int pointer_size, in
     case DW_LNE_end_sequence:
       PRINTF (_("End of Sequence\n\n"));
       state_machine_regs.end_sequence = 1;
-      dump_state_machine(printfptr);
+      dump_state_machine(tmp, printfptr);
       reset_state_machine (is_stmt);
       break;
 
@@ -306,12 +313,12 @@ static char *process_line_info(char *data, char *end_of_sequence, DWARF2_Interna
 	      state_machine_regs.line += adv;
 	      PRINTF (_(" and Line by %d to %d\n"),
 		      adv, state_machine_regs.line);
-          dump_state_machine(printfptr);
+          dump_state_machine(NULL, printfptr);
 	    }
 	  else switch (op_code)
 	    {
 	    case DW_LNS_extended_op:
-	      data += process_extended_line_op (data, info->li_default_is_stmt,
+	      data += process_extended_line_op (NULL, data, info->li_default_is_stmt,
 						pointer_size, printfptr);
 	      break;
 
@@ -586,9 +593,137 @@ display_debug_lines (elf64_shdr *section,
   return 1;
 }
 
+static char *process_line_info_uma(char *data, lineinfo *tmp, int (*printfptr)(const char*, ...))
+{
+    char *end_of_sequence = tmp->end_of_sequence;
+    DWARF2_Internal_LineInfo *info = &tmp->info;
+    unsigned int pointer_size = tmp->pointer_size;
+    char *standard_opcodes = tmp->standard_opcodes;
+      while (data < end_of_sequence)
+	{
+	  unsigned char op_code;
+	  int adv;
+	  int bytes_read;
+
+	  op_code = *data++;
+
+	  if (op_code >= info->li_opcode_base)
+	    {
+	      op_code -= info->li_opcode_base;
+	      adv      = (op_code / info->li_line_range) * info->li_min_insn_length;
+	      state_machine_regs.address += adv;
+	      PRINTF (_("  Special opcode %d: advance Address by %d to 0x%lx"),
+		      op_code, adv, state_machine_regs.address);
+	      adv = (op_code % info->li_line_range) + info->li_line_base;
+	      state_machine_regs.line += adv;
+	      PRINTF (_(" and Line by %d to %d\n"),
+		      adv, state_machine_regs.line);
+          dump_state_machine(tmp, printfptr);
+	    }
+	  else switch (op_code)
+	    {
+	    case DW_LNS_extended_op:
+	      data += process_extended_line_op (tmp, data, info->li_default_is_stmt,
+						pointer_size, printfptr);
+	      break;
+
+	    case DW_LNS_copy:
+	      PRINTF (_("  Copy\n"));
+	      break;
+
+	    case DW_LNS_advance_pc:
+	      adv = info->li_min_insn_length * read_leb128 (data, & bytes_read, 0);
+	      data += bytes_read;
+	      state_machine_regs.address += adv;
+	      PRINTF (_("  Advance PC by %d to %lx\n"), adv,
+		      state_machine_regs.address);
+	      break;
+
+	    case DW_LNS_advance_line:
+	      adv = read_leb128 (data, & bytes_read, 1);
+	      data += bytes_read;
+	      state_machine_regs.line += adv;
+	      PRINTF (_("  Advance Line by %d to %d\n"), adv,
+		      state_machine_regs.line);
+	      break;
+
+	    case DW_LNS_set_file:
+	      adv = read_leb128 (data, & bytes_read, 0);
+	      data += bytes_read;
+	      PRINTF (_("  Set File Name to entry %d in the File Name Table\n"),
+		      adv);
+	      state_machine_regs.file = adv;
+	      break;
+
+	    case DW_LNS_set_column:
+	      adv = read_leb128 (data, & bytes_read, 0);
+	      data += bytes_read;
+	      PRINTF (_("  Set column to %d\n"), adv);
+	      state_machine_regs.column = adv;
+	      break;
+
+	    case DW_LNS_negate_stmt:
+	      adv = state_machine_regs.is_stmt;
+	      adv = ! adv;
+	      PRINTF (_("  Set is_stmt to %d\n"), adv);
+	      state_machine_regs.is_stmt = adv;
+	      break;
+
+	    case DW_LNS_set_basic_block:
+	      PRINTF (_("  Set basic block\n"));
+	      state_machine_regs.basic_block = 1;
+	      break;
+
+	    case DW_LNS_const_add_pc:
+	      adv = (((255 - info->li_opcode_base) / info->li_line_range)
+		     * info->li_min_insn_length);
+	      state_machine_regs.address += adv;
+	      PRINTF (_("  Advance PC by constant %d to 0x%lx\n"), adv,
+		      state_machine_regs.address);
+	      break;
+
+	    case DW_LNS_fixed_advance_pc:
+	      adv = byte_get (data, 2);
+	      data += 2;
+	      state_machine_regs.address += adv;
+	      PRINTF (_("  Advance PC by fixed size amount %d to 0x%lx\n"),
+		      adv, state_machine_regs.address);
+	      break;
+
+	    case DW_LNS_set_prologue_end:
+	      PRINTF (_("  Set prologue_end to true\n"));
+	      break;
+
+	    case DW_LNS_set_epilogue_begin:
+	      PRINTF (_("  Set epilogue_begin to true\n"));
+	      break;
+
+	    case DW_LNS_set_isa:
+	      adv = read_leb128 (data, & bytes_read, 0);
+	      data += bytes_read;
+	      PRINTF (_("  Set ISA to %d\n"), adv);
+	      break;
+
+	    default:
+	      PRINTF (_("  Unknown opcode %d with operands: "), op_code);
+	      {
+		int i;
+		for (i = standard_opcodes[op_code - 1]; i > 0 ; --i)
+		  {
+		    PRINTF ("0x%lx%s", read_leb128 (data, &bytes_read, 0),
+			    i == 1 ? "" : ", ");
+		    data += bytes_read;
+		  }
+      PRINTF ("\n");
+	      }
+	      break;
+	    }
+	}
+      return data;
+}
 
 int
-display_line_info_uma (int file)
+store_line_info ()
 {
     int i;
     char *data = NULL;
@@ -623,6 +758,12 @@ display_line_info_uma (int file)
 
         data++;
 
-        data = process_line_info(data, tmp->end_of_sequence, &tmp->info, tmp->pointer_size, tmp->standard_opcodes, printf);
+        data = process_line_info_uma(data, tmp, printf);
     }
+}
+
+int
+display_line_info_uma (int file)
+{
+    store_line_info();
 }

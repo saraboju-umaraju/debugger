@@ -35,6 +35,13 @@
 #include "dwarf.h"
 #define xmalloc malloc
 #define xrealloc realloc
+
+struct attr_data
+{
+    unsigned long uvalue;
+    unsigned char *svalue;
+    unsigned long indirect;
+};
 uint64_t
 byte_get (const unsigned char *field, unsigned int size);
 unsigned long int
@@ -71,7 +78,8 @@ read_attr (unsigned long attribute,
 		       unsigned long cu_offset,
 		       unsigned long pointer_size,
 		       unsigned long offset_size,
-		       int dwarf_version);
+		       int dwarf_version,
+               struct attr_data *ptr);
 
 unsigned char *
 read_and_display_attr_value (unsigned long attribute,
@@ -94,6 +102,7 @@ typedef struct abbrev_attr
 {
     unsigned long attribute;
     unsigned long form;
+    unsigned char *saved_addr;
     struct abbrev_attr *next;
 }
 abbrev_attr;
@@ -101,6 +110,7 @@ abbrev_attr;
 typedef struct abbrev_entry
 {
     unsigned long entry;
+    unsigned long saved_entry;
     unsigned long tag;
     int children;
     struct abbrev_attr *first_attr;

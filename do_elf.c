@@ -500,6 +500,264 @@ restore_offset(int fd, unsigned long long off)
 {
     lseek(fd, off, SEEK_SET);
 }
+static int oops_3(int fd, struct comp_unit *cu)
+{
+    char *tags = cu->tags;
+    char *saved_tags = NULL;
+    char *start = cu->start;
+    struct attr_data *attrdata = malloc (sizeof(struct attr_data));
+    memset(attrdata, 0, sizeof(struct attr_data));
+    int level = 0;
+    int bytes_read;
+    unsigned long abbrev_number;
+    abbrev_entry *entry;
+    abbrev_attr *attr;
+    abbrev_attr *tmpattr;
+
+    for (entry = cu->first_abbrev;
+            entry ;
+            entry = entry->next) {
+        printf (_(" <%d><%lx>: Abbrev Number: %lu (%s)\n"),
+                level,
+                0l,
+                entry->saved_entry,
+                get_TAG_name (entry->tag));
+        for (attr = entry->first_attr; attr; attr = attr->next) {
+            tags = read_and_display_attr (attr->attribute,
+                    attr->form,
+                    attr->saved_addr, cu->cu_offset,
+                    cu->cu.cu_pointer_size,
+                    cu->offset_size,
+                    cu->cu.cu_version);
+            if (entry->children)
+                ++level;
+        }
+    }
+    return 1;
+}
+static int oops_2(int fd, struct comp_unit *cu)
+{
+    char *tags = cu->tags;
+    char *saved_tags = NULL;
+    char *start = cu->start;
+    struct attr_data *attrdata = malloc (sizeof(struct attr_data));
+    memset(attrdata, 0, sizeof(struct attr_data));
+    int level = 0;
+    while (tags < start)
+    {
+        int bytes_read;
+        unsigned long abbrev_number;
+        abbrev_entry *entry;
+        abbrev_attr *attr;
+        abbrev_attr *tmpattr;
+
+        abbrev_number = read_leb128 (tags, & bytes_read, 0);
+        tags += bytes_read;
+
+        if (abbrev_number == 0)
+        {
+            --level;
+            continue;
+        }
+
+        for (entry = cu->first_abbrev;
+                entry && entry->entry != abbrev_number;
+                entry = entry->next)
+            continue;
+        entry->saved_entry = abbrev_number;
+
+        if (entry == NULL)
+        {
+            warn (_("Unable to locate entry %lu in the abbreviation table\n"),
+                    abbrev_number);
+            return 0;
+        }
+        saved_tags = tags;
+        for (attr = entry->first_attr; attr; attr = attr->next) {
+            attr->saved_addr = tags;
+            tags = read_attr (attr->attribute,
+                    attr->form,
+                    tags, cu->cu_offset,
+                    cu->cu.cu_pointer_size,
+                    cu->offset_size,
+                    cu->cu.cu_version,
+                    attrdata);
+        }
+
+        if (entry->children)
+            ++level;
+    }
+    return 1;
+}
+
+static int oops(int fd, struct comp_unit *cu, enum dwarf_tag tag)
+{
+    char *tags = cu->tags;
+    char *saved_tags = NULL;
+    char *start = cu->start;
+    struct attr_data *attrdata = malloc (sizeof(struct attr_data));
+    memset(attrdata, 0, sizeof(struct attr_data));
+    int level = 0;
+    unsigned long low_pc = 0;
+    unsigned long high_pc = 0;
+    unsigned long pc = 0x4007e5;
+    while (tags < start)
+    {
+        int bytes_read;
+        unsigned long abbrev_number;
+        abbrev_entry *entry;
+        abbrev_attr *attr;
+        abbrev_attr *tmpattr;
+
+        abbrev_number = read_leb128 (tags, & bytes_read, 0);
+        tags += bytes_read;
+
+        if (abbrev_number == 0)
+        {
+            --level;
+            continue;
+        }
+
+        /* Scan through the abbreviation list until we reach the
+           correct entry.  */
+        for (entry = cu->first_abbrev;
+                entry && entry->entry != abbrev_number;
+                entry = entry->next)
+            continue;
+
+        if (entry == NULL)
+        {
+            warn (_("Unable to locate entry %lu in the abbreviation table\n"),
+                    abbrev_number);
+            return 0;
+        }
+        saved_tags = tags;
+        for (attr = entry->first_attr; attr; attr = attr->next) {
+            tags = read_attr (attr->attribute,
+                    attr->form,
+                    tags, cu->cu_offset,
+                    cu->cu.cu_pointer_size,
+                    cu->offset_size,
+                    cu->cu.cu_version,
+                    attrdata);
+            if (entry->tag == tag)  {
+                if (attr->attribute == DW_AT_name) {
+                    sdebug ("%lx %s %lu\n", attrdata->uvalue, attrdata->svalue, attrdata->indirect);
+                    sdebug("name := %s\n", fetch_indirect_string(attrdata->uvalue));
+                    if (strcmp(fetch_indirect_string(attrdata->uvalue), "main") == 0)  {
+                        memset(attrdata, 0, sizeof(struct attr_data));
+                        for (tmpattr = entry->first_attr; tmpattr; tmpattr = tmpattr->next) {
+                            saved_tags = read_and_display_attr (tmpattr->attribute,
+                                    tmpattr->form,
+                                    saved_tags, cu->cu_offset,
+                                    cu->cu.cu_pointer_size,
+                                    cu->offset_size,
+                                    cu->cu.cu_version);
+                        }
+                    }
+                }
+                if (attr->attribute == DW_AT_low_pc) {
+                    low_pc = attrdata->uvalue;
+                }
+                if (attr->attribute == DW_AT_high_pc) {
+                    high_pc = attrdata->uvalue;
+                }
+                if ( pc >= low_pc && pc <= high_pc) {
+                    printf (" __UMA__ %s %s %d\n",__FILE__,__func__,__LINE__);
+                }
+            }
+        }
+
+        if (entry->children)
+            ++level;
+    }
+    return 1;
+}
+
+static int sub_program_containing_pc(int fd, struct comp_unit *cu, unsigned long pc)
+{
+    char *tags = cu->tags;
+    char *saved_tags = NULL;
+    char *start = cu->start;
+    struct attr_data *attrdata = malloc (sizeof(struct attr_data));
+    memset(attrdata, 0, sizeof(struct attr_data));
+    int level = 0;
+    unsigned long low_pc = 0;
+    unsigned long high_pc = 0;
+    enum dwarf_tag tag = DW_TAG_subprogram;
+    pc = 0x4007e5;
+    while (tags < start)
+    {
+        int bytes_read;
+        unsigned long abbrev_number;
+        abbrev_entry *entry;
+        abbrev_attr *attr;
+        abbrev_attr *tmpattr;
+
+        abbrev_number = read_leb128 (tags, & bytes_read, 0);
+        tags += bytes_read;
+
+        if (abbrev_number == 0)
+        {
+            --level;
+            continue;
+        }
+
+        /* Scan through the abbreviation list until we reach the
+           correct entry.  */
+        for (entry = cu->first_abbrev;
+                entry && entry->entry != abbrev_number;
+                entry = entry->next)
+            continue;
+
+        if (entry == NULL)
+        {
+            warn (_("Unable to locate entry %lu in the abbreviation table\n"),
+                    abbrev_number);
+            return 0;
+        }
+        saved_tags = tags;
+        for (attr = entry->first_attr; attr; attr = attr->next) {
+            tags = read_attr (attr->attribute,
+                    attr->form,
+                    tags, cu->cu_offset,
+                    cu->cu.cu_pointer_size,
+                    cu->offset_size,
+                    cu->cu.cu_version,
+                    attrdata);
+            if (entry->tag == tag)  {
+                if (attr->attribute == DW_AT_name) {
+                    sdebug ("%lx %s %lu\n", attrdata->uvalue, attrdata->svalue, attrdata->indirect);
+                    sdebug("name := %s\n", fetch_indirect_string(attrdata->uvalue));
+                    if (strcmp(fetch_indirect_string(attrdata->uvalue), "main") == 0)  {
+                        memset(attrdata, 0, sizeof(struct attr_data));
+                        for (tmpattr = entry->first_attr; tmpattr; tmpattr = tmpattr->next) {
+                            saved_tags = read_and_display_attr (tmpattr->attribute,
+                                    tmpattr->form,
+                                    saved_tags, cu->cu_offset,
+                                    cu->cu.cu_pointer_size,
+                                    cu->offset_size,
+                                    cu->cu.cu_version);
+                        }
+                    }
+                }
+                if (attr->attribute == DW_AT_low_pc) {
+                    low_pc = attrdata->uvalue;
+                }
+                if (attr->attribute == DW_AT_high_pc) {
+                    high_pc = attrdata->uvalue;
+                }
+                if ( pc >= low_pc && pc <= high_pc) {
+                    printf (" __UMA__ %s %s %d\n",__FILE__,__func__,__LINE__);
+                }
+            }
+        }
+
+        if (entry->children)
+            ++level;
+    }
+    return 1;
+}
 
 #if 1
 static int go_through_and_find(int fd, struct comp_unit *cu, enum dwarf_tag tag)
@@ -507,6 +765,8 @@ static int go_through_and_find(int fd, struct comp_unit *cu, enum dwarf_tag tag)
     char *tags = cu->tags;
     char *start = cu->start;
       int level = 0;
+    struct attr_data *attrdata = malloc (sizeof(struct attr_data));
+    memset(attrdata, 0, sizeof(struct attr_data));
       while (tags < start)
 	{
 	  int bytes_read;
@@ -543,7 +803,7 @@ static int go_through_and_find(int fd, struct comp_unit *cu, enum dwarf_tag tag)
                       tags, cu->cu_offset,
                       cu->cu.cu_pointer_size,
                       cu->offset_size,
-                      cu->cu.cu_version);
+                      cu->cu.cu_version, attrdata);
       } else {
 
           for (attr = entry->first_attr; attr; attr = attr->next)
@@ -795,8 +1055,9 @@ int print_dwarf_info_with_tag(struct comp_unit *tmp, int (*func)(int, struct com
 {
     if (tmp) {
         print_dwarf_info_with_tag(tmp->next, func, tag);
-        func(0, tmp, tag);
+        return func(0, tmp, tag);
     }
+    return 0;
 }
 
 int handle_elf(struct argdata *arg)
@@ -816,6 +1077,7 @@ int handle_elf(struct argdata *arg)
     } else if (arg->v[1] && ( 0 == strcmp("line", arg->v[1]))) {
         display_line_info_uma (0);
     } else if (arg->v[1] == NULL) {
+        print_dwarf_info_with_tag(comp_unit_head, oops, DW_TAG_subprogram);
     }
 }
 
@@ -840,6 +1102,8 @@ int do_elf_load ()
     process_debug_info(0);
     //dump_section_headers(fd);
     load_debug_lines(fd);
+    print_dwarf_info(comp_unit_head, oops_2);
+    print_dwarf_info(comp_unit_head, oops_3);
 
     return 0;
 }
