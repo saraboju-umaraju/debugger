@@ -44,7 +44,11 @@ cdb : $(OBJECTS) do_me
 	@$(PRINTF) 'LINK %-10s\n' "$@"
 	@./cdb
 clean :
-	@$(RM) $(OBJECTS) cdb do_me do_me.o dwarf dwarf.o for-dwarf for-dwarf.o do_me_helper.o
+	@$(RM) $(OBJECTS) cdb do_me do_me.o dwarf dwarf.o for-dwarf for-dwarf.o do_me_helper.o tags cscope.out
+
+tags:
+	#ctags `find . -name "*.[ch]" -print`
+	ctags $(SOURCES) debug.h
 
 for-dwarf.o : for-dwarf.c
 	@$(CLANG) -gdwarf-2 -c -o $@ $^
